@@ -122,10 +122,14 @@ function split_state_key(string $key, array $siteNames): array
 function value_lines($value): array
 {
     if (is_array($value)) {
-        return array_values(array_filter(array_map('strval', $value), fn($line) => trim($line) !== ''));
+        return array_values(array_filter(array_map('strval', $value), function ($line) {
+            return trim($line) !== '';
+        }));
     }
 
-    return array_values(array_filter(array_map('trim', explode("\n", (string) ($value ?? ''))), fn($line) => $line !== ''));
+    return array_values(array_filter(array_map('trim', explode("\n", (string) ($value ?? ''))), function ($line) {
+        return $line !== '';
+    }));
 }
 
 function format_field_value($value): string
@@ -137,7 +141,9 @@ function format_field_value($value): string
 function added_lines($before, $after): array
 {
     $beforeLines = value_lines($before);
-    return array_values(array_filter(value_lines($after), fn($line) => !in_array($line, $beforeLines, true)));
+    return array_values(array_filter(value_lines($after), function ($line) use ($beforeLines) {
+        return !in_array($line, $beforeLines, true);
+    }));
 }
 
 function build_field_change_text(array $before, array $after, array $fields): string
@@ -166,13 +172,19 @@ function build_field_change_text(array $before, array $after, array $fields): st
 
 function site_names_from_ids(array $siteIds, array $siteNames): array
 {
-    return array_map(fn($siteId) => $siteNames[$siteId] ?? $siteId, $siteIds);
+    return array_map(function ($siteId) use ($siteNames) {
+        return $siteNames[$siteId] ?? $siteId;
+    }, $siteIds);
 }
 
 function build_assignment_change_text(array $previousSiteIds, array $nextSiteIds, array $siteNames): string
 {
-    $added = array_values(array_filter($nextSiteIds, fn($siteId) => !in_array($siteId, $previousSiteIds, true)));
-    $removed = array_values(array_filter($previousSiteIds, fn($siteId) => !in_array($siteId, $nextSiteIds, true)));
+    $added = array_values(array_filter($nextSiteIds, function ($siteId) use ($previousSiteIds) {
+        return !in_array($siteId, $previousSiteIds, true);
+    }));
+    $removed = array_values(array_filter($previousSiteIds, function ($siteId) use ($nextSiteIds) {
+        return !in_array($siteId, $nextSiteIds, true);
+    }));
     $current = site_names_from_ids($nextSiteIds, $siteNames);
     $parts = [];
 
