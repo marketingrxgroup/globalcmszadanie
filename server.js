@@ -16,8 +16,11 @@ const defaultState = {
   moduleLayout: null,
   collapsedTreeGroups: {},
   customMvpItems: [],
+  mvpLayout: null,
   customQuestions: [],
   checkedQuestions: {},
+  deletedQuestions: [],
+  questionAnswers: {},
   siteMeta: {},
   deletedModules: [],
 };
@@ -65,8 +68,11 @@ function normalizeState(parsed) {
     moduleLayout: parsed.moduleLayout || null,
     collapsedTreeGroups: parsed.collapsedTreeGroups || {},
     customMvpItems: parsed.customMvpItems || [],
+    mvpLayout: parsed.mvpLayout || null,
     customQuestions: parsed.customQuestions || [],
     checkedQuestions: parsed.checkedQuestions || {},
+    deletedQuestions: parsed.deletedQuestions || [],
+    questionAnswers: parsed.questionAnswers || {},
     siteMeta: parsed.siteMeta || {},
     deletedModules: parsed.deletedModules || [],
   };

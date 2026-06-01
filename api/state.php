@@ -36,8 +36,11 @@ function default_state(): array
         'moduleLayout' => null,
         'collapsedTreeGroups' => new stdClass(),
         'customMvpItems' => [],
+        'mvpLayout' => null,
         'customQuestions' => [],
         'checkedQuestions' => new stdClass(),
+        'deletedQuestions' => [],
+        'questionAnswers' => new stdClass(),
         'siteMeta' => new stdClass(),
         'deletedModules' => [],
     ];
@@ -58,8 +61,11 @@ function normalize_state(array $decoded): array
         'moduleLayout' => $decoded['moduleLayout'] ?? null,
         'collapsedTreeGroups' => $decoded['collapsedTreeGroups'] ?? [],
         'customMvpItems' => $decoded['customMvpItems'] ?? [],
+        'mvpLayout' => $decoded['mvpLayout'] ?? null,
         'customQuestions' => $decoded['customQuestions'] ?? [],
         'checkedQuestions' => $decoded['checkedQuestions'] ?? [],
+        'deletedQuestions' => $decoded['deletedQuestions'] ?? [],
+        'questionAnswers' => $decoded['questionAnswers'] ?? [],
         'siteMeta' => $decoded['siteMeta'] ?? [],
         'deletedModules' => $decoded['deletedModules'] ?? [],
     ];
@@ -67,7 +73,7 @@ function normalize_state(array $decoded): array
 
 function state_for_storage(array $state): array
 {
-    foreach (['assignments', 'details', 'completed', 'collapsedTreeGroups', 'checkedQuestions', 'siteMeta'] as $key) {
+    foreach (['assignments', 'details', 'completed', 'collapsedTreeGroups', 'checkedQuestions', 'questionAnswers', 'siteMeta'] as $key) {
         if (empty($state[$key])) {
             $state[$key] = new stdClass();
         }
@@ -513,8 +519,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'moduleLayout' => $decoded['moduleLayout'] ?? null,
         'collapsedTreeGroups' => $decoded['collapsedTreeGroups'] ?? new stdClass(),
         'customMvpItems' => $decoded['customMvpItems'] ?? [],
+        'mvpLayout' => $decoded['mvpLayout'] ?? null,
         'customQuestions' => $decoded['customQuestions'] ?? [],
         'checkedQuestions' => $decoded['checkedQuestions'] ?? new stdClass(),
+        'deletedQuestions' => $decoded['deletedQuestions'] ?? [],
+        'questionAnswers' => $decoded['questionAnswers'] ?? new stdClass(),
         'siteMeta' => $decoded['siteMeta'] ?? new stdClass(),
         'deletedModules' => $decoded['deletedModules'] ?? [],
     ]);

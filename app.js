@@ -625,8 +625,11 @@ let cmsState = {
   moduleLayout: null,
   collapsedTreeGroups: {},
   customMvpItems: [],
+  mvpLayout: null,
   customQuestions: [],
   checkedQuestions: {},
+  deletedQuestions: [],
+  questionAnswers: {},
   siteMeta: {},
   deletedModules: [],
 };
@@ -2380,13 +2383,17 @@ async function loadCmsState() {
       moduleLayout: loaded.moduleLayout || null,
       collapsedTreeGroups: loaded.collapsedTreeGroups || {},
       customMvpItems: loaded.customMvpItems || [],
+      mvpLayout: loaded.mvpLayout || null,
       customQuestions: loaded.customQuestions || [],
       checkedQuestions: loaded.checkedQuestions || {},
+      deletedQuestions: loaded.deletedQuestions || [],
+      questionAnswers: loaded.questionAnswers || {},
       siteMeta: loaded.siteMeta || {},
       deletedModules: loaded.deletedModules || [],
     };
     collapsedTreeGroups = { ...cmsState.collapsedTreeGroups };
     applyModuleStructureFromState();
+    applyMvpLayoutFromState();
   } catch (error) {
     console.warn("Не мога да заредя cms-state.json", error);
   }
@@ -2847,8 +2854,11 @@ async function importCmsJson(event) {
     moduleLayout: imported.moduleLayout || null,
     collapsedTreeGroups: imported.collapsedTreeGroups || {},
     customMvpItems: imported.customMvpItems || [],
+    mvpLayout: imported.mvpLayout || null,
     customQuestions: imported.customQuestions || [],
     checkedQuestions: imported.checkedQuestions || {},
+    deletedQuestions: imported.deletedQuestions || [],
+    questionAnswers: imported.questionAnswers || {},
     siteMeta: imported.siteMeta || {},
     deletedModules: imported.deletedModules || [],
   };
@@ -3008,28 +3018,178 @@ function bindCreateModuleForm(container) {
   });
 }
 
+function makeQuestionKey(question) {
+  return normalizeKey(question);
+}
+
+function getVisibleQuestions() {
+  const deleted = new Set(cmsState.deletedQuestions || []);
+  return [...defaultQuestions, ...(cmsState.customQuestions || [])].filter((question) => !deleted.has(makeQuestionKey(question)));
+}
+
+async function deleteQuestion(questionKey, questionText) {
+  const confirmed = window.confirm(`Да изтрия ли въпроса?\n\n${questionText}`);
+  if (!confirmed) return;
+
+  cmsState.deletedQuestions = cmsState.deletedQuestions || [];
+  if (!cmsState.deletedQuestions.includes(questionKey)) {
+    cmsState.deletedQuestions.push(questionKey);
+  }
+
+  cmsState.customQuestions = (cmsState.customQuestions || []).filter((question) => makeQuestionKey(question) !== questionKey);
+
+  if (cmsState.checkedQuestions?.[questionKey]) {
+    delete cmsState.checkedQuestions[questionKey];
+  }
+  if (cmsState.questionAnswers?.[questionKey]) {
+    delete cmsState.questionAnswers[questionKey];
+  }
+
+  renderMvpAndQuestions();
+  const saved = await saveCmsState(
+    cmsEvent("question.deleted", "Изтрит е въпрос", {
+      description: questionText,
+    })
+  );
+  const status = document.querySelector("#questionStatus");
+  if (status) {
+    status.classList.remove("error");
+    status.textContent = saved ? "Изтрито" : "Не е записано";
+  }
+}
+
+async function saveQuestionAnswer(questionKey, reason = "manual") {
+  const saved = await saveCmsState(
+    cmsEvent("question.updated", reason === "autosave" ? "Автозаписан е отговор" : "Записан е отговор", {
+      description: questionKey,
+    })
+  );
+  const status = document.querySelector("#questionStatus");
+  if (status && reason !== "autosave") {
+    status.classList.remove("error");
+    status.textContent = saved ? "Записано" : "Не е записано";
+  }
+  return saved;
+}
+
+function cloneMvpLayout(layout) {
+  return {
+    phase1: [...(layout?.phase1 || [])],
+    phase2: [...(layout?.phase2 || [])],
+  };
+}
+
+function applyMvpLayoutFromState() {
+  if (cmsState.mvpLayout && (cmsState.mvpLayout.phase1?.length || cmsState.mvpLayout.phase2?.length)) {
+    cmsState.mvpLayout = cloneMvpLayout(cmsState.mvpLayout);
+    return;
+  }
+
+  cmsState.mvpLayout = cloneMvpLayout(defaultMvpItems);
+  (cmsState.customMvpItems || []).forEach((item) => {
+    if (item.phase === "phase1") cmsState.mvpLayout.phase1.push(item.text);
+    if (item.phase === "phase2") cmsState.mvpLayout.phase2.push(item.text);
+  });
+}
+
+function ensureMvpLayout() {
+  if (!cmsState.mvpLayout) applyMvpLayoutFromState();
+  return cmsState.mvpLayout;
+}
+
+async function saveMvpLayout(reason = "manual") {
+  const saved = await saveCmsState(
+    cmsEvent("mvp.updated", reason === "autosave" ? "Автозаписан е MVP списък" : "Обновен е MVP списък")
+  );
+  const status = document.querySelector("#mvpStatus");
+  if (status && reason !== "autosave") {
+    status.classList.remove("error");
+    status.textContent = saved ? "Записано" : "Не е записано";
+  }
+  return saved;
+}
+
+function renderMvpPhaseList(phase, container, muted = false) {
+  const items = ensureMvpLayout()[phase] || [];
+  const marker = muted ? "○" : "✓";
+
+  container.innerHTML = items
+    .map((text, index) => {
+      return `
+        <li class="mvp-item">
+          <span class="mvp-item-marker" aria-hidden="true">${marker}</span>
+          <input class="mvp-item-input" type="text" value="${escapeAttr(text)}" data-phase="${escapeAttr(phase)}" data-index="${index}" />
+          <button class="mvp-delete" type="button" data-phase="${escapeAttr(phase)}" data-index="${index}" title="Изтрий">×</button>
+        </li>
+      `;
+    })
+    .join("");
+
+  container.querySelectorAll(".mvp-item-input").forEach((input) => {
+    input.addEventListener("input", () => {
+      const layout = ensureMvpLayout();
+      layout[input.dataset.phase][Number(input.dataset.index)] = input.value;
+      const timerKey = `mvp:${input.dataset.phase}:${input.dataset.index}`;
+      window.clearTimeout(autosaveTimers.get(timerKey));
+      autosaveTimers.set(
+        timerKey,
+        window.setTimeout(() => {
+          saveMvpLayout("autosave");
+        }, 1200)
+      );
+    });
+  });
+
+  container.querySelectorAll(".mvp-delete").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const layout = ensureMvpLayout();
+      const index = Number(button.dataset.index);
+      const text = layout[button.dataset.phase][index];
+      if (!window.confirm(`Да изтрия ли MVP точката?\n\n${text}`)) return;
+
+      layout[button.dataset.phase].splice(index, 1);
+      renderMvpAndQuestions();
+      const saved = await saveCmsState(
+        cmsEvent("mvp.deleted", "Изтрита е MVP точка", {
+          description: text,
+        })
+      );
+      const status = document.querySelector("#mvpStatus");
+      if (status) {
+        status.classList.remove("error");
+        status.textContent = saved ? "Изтрито" : "Не е записано";
+      }
+    });
+  });
+}
+
 function renderMvpAndQuestions() {
   const phase1 = document.querySelector("#mvpPhase1");
   const phase2 = document.querySelector("#mvpPhase2");
   const questionsList = document.querySelector("#questionsList");
   if (!phase1 || !phase2 || !questionsList) return;
 
-  const customMvp = cmsState.customMvpItems || [];
-  const phase1Items = [...defaultMvpItems.phase1, ...customMvp.filter((item) => item.phase === "phase1").map((item) => item.text)];
-  const phase2Items = [...defaultMvpItems.phase2, ...customMvp.filter((item) => item.phase === "phase2").map((item) => item.text)];
-  phase1.innerHTML = phase1Items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
-  phase2.innerHTML = phase2Items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  renderMvpPhaseList("phase1", phase1, false);
+  renderMvpPhaseList("phase2", phase2, true);
 
-  const questions = [...defaultQuestions, ...(cmsState.customQuestions || [])];
+  const questions = getVisibleQuestions();
   questionsList.innerHTML = questions
     .map((question) => {
       const key = makeQuestionKey(question);
       const checked = cmsState.checkedQuestions?.[key] ? "checked" : "";
+      const answer = cmsState.questionAnswers?.[key] || "";
       return `
-        <label class="question-item">
-          <input type="checkbox" data-question="${escapeAttr(key)}" ${checked} />
-          <span>${escapeHtml(question)}</span>
-        </label>
+        <article class="question-card">
+          <div class="question-item">
+            <input type="checkbox" data-question="${escapeAttr(key)}" ${checked} />
+            <span class="question-text">${escapeHtml(question)}</span>
+            <button class="question-delete" data-question="${escapeAttr(key)}" data-label="${escapeAttr(question)}" type="button" title="Изтрий въпрос">×</button>
+          </div>
+          <label class="question-answer-field">
+            <span>Отговор</span>
+            <textarea class="question-answer" data-question="${escapeAttr(key)}" rows="3" placeholder="Отговор, решение или бележка от екипа">${escapeHtml(answer)}</textarea>
+          </label>
+        </article>
       `;
     })
     .join("");
@@ -3038,9 +3198,32 @@ function renderMvpAndQuestions() {
     checkbox.addEventListener("change", async () => {
       cmsState.checkedQuestions = cmsState.checkedQuestions || {};
       cmsState.checkedQuestions[checkbox.dataset.question] = checkbox.checked;
-      await saveCmsState(cmsEvent("question.updated", checkbox.checked ? "Маркиран е въпрос" : "Размаркиран е въпрос", {
-        description: checkbox.dataset.question,
-      }));
+      await saveCmsState(
+        cmsEvent("question.updated", checkbox.checked ? "Маркиран е въпрос" : "Размаркиран е въпрос", {
+          description: checkbox.dataset.question,
+        })
+      );
+    });
+  });
+
+  questionsList.querySelectorAll(".question-delete").forEach((button) => {
+    button.addEventListener("click", async () => {
+      await deleteQuestion(button.dataset.question, button.dataset.label);
+    });
+  });
+
+  questionsList.querySelectorAll(".question-answer").forEach((textarea) => {
+    textarea.addEventListener("input", () => {
+      cmsState.questionAnswers = cmsState.questionAnswers || {};
+      cmsState.questionAnswers[textarea.dataset.question] = textarea.value;
+      const timerKey = `questionAnswer:${textarea.dataset.question}`;
+      window.clearTimeout(autosaveTimers.get(timerKey));
+      autosaveTimers.set(
+        timerKey,
+        window.setTimeout(() => {
+          saveQuestionAnswer(textarea.dataset.question, "autosave");
+        }, 1200)
+      );
     });
   });
 }
@@ -3057,8 +3240,7 @@ function bindMvpAndQuestionForms() {
       return;
     }
 
-    cmsState.customMvpItems = cmsState.customMvpItems || [];
-    cmsState.customMvpItems.push({ phase, text });
+    ensureMvpLayout()[phase].push(text);
     input.value = "";
     renderMvpAndQuestions();
     const saved = await saveCmsState(cmsEvent("mvp.created", "Добавена е MVP точка", {
@@ -3088,10 +3270,6 @@ function bindMvpAndQuestionForms() {
     status.classList.remove("error");
     status.textContent = saved ? "Записано" : "Не е записано";
   });
-}
-
-function makeQuestionKey(question) {
-  return normalizeKey(question);
 }
 
 function bindModuleDragAndRename(container) {

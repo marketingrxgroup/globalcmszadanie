@@ -840,6 +840,60 @@ body.file-mode .file-warning {
   color: var(--catalog);
 }
 
+.mvp-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfe;
+  list-style: none;
+}
+
+.mvp-item-marker {
+  flex: 0 0 auto;
+  color: var(--shop);
+  font-weight: 800;
+}
+
+.check-list.muted .mvp-item-marker {
+  color: var(--catalog);
+}
+
+.mvp-item-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 6px;
+  color: var(--text);
+  background: #fff;
+}
+
+.mvp-item-input:hover,
+.mvp-item-input:focus {
+  border-color: var(--line);
+  outline: none;
+}
+
+.mvp-delete {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #efcaca;
+  border-radius: 6px;
+  color: #b5454a;
+  background: #fff5f5;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mvp-delete:hover {
+  background: #ffe3e3;
+}
+
 .module-card {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -946,7 +1000,68 @@ body.file-mode .file-warning {
 
 .questions-list {
   display: grid;
+  gap: 12px;
+}
+
+.question-card {
+  display: grid;
   gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.question-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.question-item input {
+  margin-top: 3px;
+}
+
+.question-text {
+  flex: 1;
+}
+
+.question-delete {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #efcaca;
+  border-radius: 6px;
+  color: #b5454a;
+  background: #fff5f5;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.question-delete:hover {
+  background: #ffe3e3;
+}
+
+.question-answer-field {
+  display: grid;
+  gap: 6px;
+}
+
+.question-answer-field > span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.question-answer {
+  width: 100%;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  resize: vertical;
+  background: #fff;
 }
 
 .editor-layout {
@@ -1051,20 +1166,6 @@ body.file-mode .file-warning {
 .editor-hint.error {
   color: var(--special);
   font-weight: 700;
-}
-
-.question-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fbfcfe;
-}
-
-.question-item input {
-  margin-top: 3px;
 }
 
 @media (max-width: 900px) {
