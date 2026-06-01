@@ -2,6 +2,7 @@ node_modules/
 .env
 .htpasswd
 CRED.txt
+cms-state.json
 *.log
 *.xls
 *.xlsx
