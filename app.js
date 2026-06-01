@@ -461,7 +461,7 @@ const moduleGroups = [
   {
     title: "Сайт",
     type: "common",
-    items: ["Избор на сайт", "Профил на сайт", "Активни модули", "Домейни", "Езици", "Връзка с база данни"],
+    items: ["Избор на сайт", "Профил на сайт", "Активни модули", "Домейни", "Връзка с база данни"],
   },
   {
     title: "Каталог",
@@ -521,7 +521,7 @@ const moduleGroups = [
   {
     title: "Настройки",
     type: "common",
-    items: ["Текстове", "Преводи", "Контакти", "Имейл шаблони", "Права и роли", "Потребители", "История на промени", "Логове"],
+    items: ["Езици", "Текстове", "Преводи", "Контакти", "Имейл шаблони", "Права и роли", "Потребители", "История на промени", "Логове"],
   },
 ];
 
@@ -538,7 +538,6 @@ const moduleItemGroupOverrides = {
   "Настройки сайт||Оферти": "Landing страници",
   "Продажби||Landing страници / продуктови фунии": "Landing страници",
   "Продажби||Сравнение на цени": "Каталог",
-  "Настройки||Езици": "Сайт",
   "Настройки на сайта||SEO настройки": "Маркетинг",
   "Настройки сайт||SEO настройки": "Маркетинг",
   "Магазин||Запитвания": "Запитвания",
@@ -2449,6 +2448,17 @@ function migrateAssignmentKeysOnLoad() {
   cmsState.assignments = Object.fromEntries(
     Object.entries(merged).map(([key, siteIds]) => [key, [...siteIds]])
   );
+
+  const legacyLanguagesKey = makeAssignmentKey("Сайт", "Езици");
+  const settingsLanguagesKey = makeAssignmentKey("Настройки", "Езици");
+  if (cmsState.assignments[legacyLanguagesKey]) {
+    const siteIds = new Set([
+      ...(cmsState.assignments[settingsLanguagesKey] || []),
+      ...cmsState.assignments[legacyLanguagesKey],
+    ]);
+    cmsState.assignments[settingsLanguagesKey] = [...siteIds];
+    delete cmsState.assignments[legacyLanguagesKey];
+  }
 }
 
 function findSiteGroupForAssignment(site, groupTitle, itemLabel) {
