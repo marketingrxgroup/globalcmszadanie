@@ -370,6 +370,7 @@ body.file-mode .file-warning {
 .panel h3 {
   margin-bottom: 12px;
   font-size: 18px;
+  text-transform: uppercase;
 }
 
 .panel-note {
