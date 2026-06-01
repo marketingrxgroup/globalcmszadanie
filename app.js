@@ -575,6 +575,7 @@ let cmsState = {
   customMvpItems: [],
   customQuestions: [],
   checkedQuestions: {},
+  siteMeta: {},
 };
 
 let collapsedTreeGroups = {};
@@ -638,6 +639,8 @@ function renderSiteProfile(siteId) {
     tab.classList.toggle("active", tab.dataset.site === site.id);
   });
 
+  const siteMeta = getSiteMeta(site);
+
   profile.innerHTML = `
     <div class="profile-workspace">
       <div class="panel">
@@ -660,22 +663,22 @@ function renderSiteProfile(siteId) {
     <div class="details-grid">
       <div class="panel">
         <h3>Полета / данни</h3>
-        <ul class="field-list">
-          ${site.fields.map((field) => `<li>${field}</li>`).join("")}
-        </ul>
+        <textarea class="site-meta-textarea" id="siteFieldsEditor" data-meta="fields">${escapeHtml(siteMeta.fields.join("\n"))}</textarea>
       </div>
 
       <div class="panel">
         <h3>Процеси</h3>
-        <ul class="process-list">
-          ${site.processes.map((process) => `<li>${process}</li>`).join("")}
-        </ul>
+        <textarea class="site-meta-textarea" id="siteProcessesEditor" data-meta="processes">${escapeHtml(siteMeta.processes.join("\n"))}</textarea>
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel site-notes-panel">
       <h3>Бележки</h3>
-      <p>${site.notes}</p>
+      <textarea class="site-meta-textarea" id="siteNotesEditor" data-meta="notes">${escapeHtml(siteMeta.notes)}</textarea>
+      <div class="editor-actions">
+        <button class="primary-button site-meta-save" type="button">Запази данните за сайта</button>
+        <span class="save-status" id="siteMetaStatus"></span>
+      </div>
     </div>
   `;
 
@@ -712,6 +715,31 @@ function renderSiteProfile(siteId) {
 
   autosizeTextareas(profile);
   bindSiteDetailSave(profile, site, firstGroup?.title, firstLabel);
+  bindSiteMetaSave(profile, site);
+}
+
+function getSiteMeta(site) {
+  const saved = cmsState.siteMeta?.[site.id];
+  return {
+    fields: Array.isArray(saved?.fields) ? saved.fields : site.fields,
+    processes: Array.isArray(saved?.processes) ? saved.processes : site.processes,
+    notes: typeof saved?.notes === "string" ? saved.notes : site.notes,
+  };
+}
+
+function bindSiteMetaSave(profile, site) {
+  profile.querySelector(".site-meta-save")?.addEventListener("click", async () => {
+    cmsState.siteMeta = cmsState.siteMeta || {};
+    cmsState.siteMeta[site.id] = {
+      fields: linesFromValue(profile.querySelector("#siteFieldsEditor").value),
+      processes: linesFromValue(profile.querySelector("#siteProcessesEditor").value),
+      notes: profile.querySelector("#siteNotesEditor").value.trim(),
+    };
+
+    const saved = await saveCmsState();
+    const status = profile.querySelector("#siteMetaStatus");
+    if (status) status.textContent = saved ? "Записано" : "Не е записано";
+  });
 }
 
 function setSiteModuleDetail(profile, site, groupTitle, itemLabel, status) {
@@ -2169,6 +2197,7 @@ async function loadCmsState() {
       customMvpItems: loaded.customMvpItems || [],
       customQuestions: loaded.customQuestions || [],
       checkedQuestions: loaded.checkedQuestions || {},
+      siteMeta: loaded.siteMeta || {},
     };
     collapsedTreeGroups = { ...cmsState.collapsedTreeGroups };
     applyModuleStructureFromState();
@@ -2424,6 +2453,7 @@ async function importCmsJson(event) {
     customMvpItems: imported.customMvpItems || [],
     customQuestions: imported.customQuestions || [],
     checkedQuestions: imported.checkedQuestions || {},
+    siteMeta: imported.siteMeta || {},
   };
 
   collapsedTreeGroups = { ...cmsState.collapsedTreeGroups };

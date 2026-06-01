@@ -25,6 +25,7 @@ function default_state(): array
         'customMvpItems' => [],
         'customQuestions' => [],
         'checkedQuestions' => new stdClass(),
+        'siteMeta' => new stdClass(),
     ];
 }
 
@@ -53,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'customMvpItems' => $decoded['customMvpItems'] ?? [],
         'customQuestions' => $decoded['customQuestions'] ?? [],
         'checkedQuestions' => $decoded['checkedQuestions'] ?? new stdClass(),
+        'siteMeta' => $decoded['siteMeta'] ?? new stdClass(),
     ]);
 }
 
@@ -77,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'customMvpItems' => $decoded['customMvpItems'] ?? [],
         'customQuestions' => $decoded['customQuestions'] ?? [],
         'checkedQuestions' => $decoded['checkedQuestions'] ?? new stdClass(),
+        'siteMeta' => $decoded['siteMeta'] ?? new stdClass(),
     ];
 
     $written = file_put_contents($stateFile, json_encode($state, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);

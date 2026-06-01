@@ -978,6 +978,23 @@ body.file-mode .file-warning {
   resize: vertical;
 }
 
+.site-meta-textarea {
+  width: 100%;
+  min-height: 120px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: #fff;
+  font: inherit;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.site-notes-panel {
+  margin-top: 16px;
+}
+
 .editor-sites {
   display: grid;
   gap: 8px;
