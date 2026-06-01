@@ -770,7 +770,7 @@ function bindSiteDetailSave(profile, site, groupTitle, itemLabel) {
 
     const saved = await saveCmsState();
     const status = profile.querySelector("#siteDetailStatus");
-    if (status) status.textContent = saved ? "Записано в cms-state.json" : "Не е записано";
+    if (status) status.textContent = saved ? "Записано" : "Не е записано";
   });
 }
 
@@ -2129,7 +2129,7 @@ async function saveCmsState() {
     return false;
   }
 
-  setEditorHint("Записано в cms-state.json.");
+  setEditorHint("Записано");
   return true;
 }
 
@@ -2417,7 +2417,7 @@ function renderModuleAssignment(groupTitle, itemLabel) {
     renderSiteTabs();
     renderSiteProfile(sites[0].id);
     const saved = await saveCmsState();
-    panel.querySelector("#moduleAssignmentStatus").textContent = saved ? "Записано в cms-state.json" : "Не е записано";
+    panel.querySelector("#moduleAssignmentStatus").textContent = saved ? "Записано" : "Не е записано";
   });
 }
 
