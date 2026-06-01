@@ -632,7 +632,87 @@ let cmsState = {
 };
 
 let collapsedTreeGroups = {};
+const autosaveTimers = new Map();
 const defaultModuleLayout = cloneModuleLayout(moduleGroups);
+
+function siteById(siteId) {
+  return sites.find((site) => site.id === siteId) || null;
+}
+
+function cmsEvent(eventType, action, details = {}) {
+  return {
+    eventType,
+    action,
+    title: details.title || action,
+    siteId: details.siteId || "",
+    siteName: details.siteName || (details.siteId ? siteById(details.siteId)?.name || details.siteId : ""),
+    moduleGroup: details.moduleGroup || "",
+    moduleName: details.moduleName || "",
+    description: details.description || action,
+    changeText: details.changeText || "",
+  };
+}
+
+function valueLines(value) {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  return String(value || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function formatFieldValue(value) {
+  const lines = valueLines(value);
+  return lines.length ? lines.join("\n") : "(празно)";
+}
+
+function addedLines(before, after) {
+  const beforeLines = valueLines(before);
+  return valueLines(after).filter((line) => !beforeLines.includes(line));
+}
+
+function buildFieldChangeText(before, after, fields) {
+  return fields
+    .filter((field) => JSON.stringify(before[field.key] || "") !== JSON.stringify(after[field.key] || ""))
+    .map((field) => {
+      const added = addedLines(before[field.key], after[field.key]);
+      const parts = [`Поле: ${field.label}`];
+
+      if (added.length) {
+        parts.push(`Допълнено:\n${added.join("\n")}`);
+      } else {
+        parts.push(`Преди:\n${formatFieldValue(before[field.key])}`);
+      }
+
+      parts.push(`Сега:\n${formatFieldValue(after[field.key])}`);
+      return parts.join("\n");
+    })
+    .join("\n\n");
+}
+
+function siteNamesFromIds(siteIds = []) {
+  return siteIds.map((siteId) => siteById(siteId)?.name || siteId);
+}
+
+function buildAssignmentChangeText(previousSiteIds = [], nextSiteIds = []) {
+  const previous = new Set(previousSiteIds);
+  const next = new Set(nextSiteIds);
+  const added = [...next].filter((siteId) => !previous.has(siteId));
+  const removed = [...previous].filter((siteId) => !next.has(siteId));
+  const current = siteNamesFromIds(nextSiteIds);
+  const parts = [];
+
+  if (added.length) {
+    parts.push(`Добавено към сайтове:\n${siteNamesFromIds(added).join("\n")}`);
+  }
+
+  if (removed.length) {
+    parts.push(`Премахнато от сайтове:\n${siteNamesFromIds(removed).join("\n")}`);
+  }
+
+  parts.push(`Сега се показва в:\n${current.length ? current.join("\n") : "(няма избрани сайтове)"}`);
+  return parts.join("\n\n");
+}
 
 if (location.protocol === "file:") {
   document.body.classList.add("file-mode");
@@ -748,7 +828,12 @@ function renderSiteProfile(siteId) {
       const key = makeStateKey(checkbox.dataset.site, checkbox.dataset.group, checkbox.dataset.item);
       cmsState.completed[key] = checkbox.checked;
       checkbox.closest("li")?.classList.toggle("completed", checkbox.checked);
-      await saveCmsState();
+      await saveCmsState(cmsEvent(checkbox.checked ? "module.completed" : "module.reopened", checkbox.checked ? "Маркиран е модул като готов" : "Модул е върнат като неготов", {
+        siteId: checkbox.dataset.site,
+        moduleGroup: checkbox.dataset.group,
+        moduleName: checkbox.dataset.item,
+        description: `${siteById(checkbox.dataset.site)?.name || checkbox.dataset.site}: "${checkbox.dataset.item}" е ${checkbox.checked ? "маркиран като готов" : "върнат като неготов"}.`,
+      }));
     });
   });
 
@@ -762,7 +847,11 @@ function renderSiteProfile(siteId) {
       group.classList.toggle("collapsed", collapsed);
       toggle.setAttribute("aria-expanded", String(!collapsed));
       toggle.querySelector(".tree-toggle-symbol").textContent = collapsed ? "+" : "-";
-      await saveCmsState();
+      await saveCmsState(cmsEvent(collapsed ? "tree.collapsed" : "tree.expanded", collapsed ? "Сгъната е група" : "Разгъната е група", {
+        siteId: toggle.dataset.site,
+        moduleGroup: toggle.dataset.group,
+        description: `${collapsed ? "Сгъната" : "Разгъната"} е група "${toggle.dataset.group}".`,
+      }));
     });
   });
 
@@ -781,17 +870,36 @@ function getSiteMeta(site) {
 }
 
 function bindSiteMetaSave(profile, site) {
-  profile.querySelector(".site-meta-save")?.addEventListener("click", async () => {
-    cmsState.siteMeta = cmsState.siteMeta || {};
-    cmsState.siteMeta[site.id] = {
+  const saveSiteMeta = async (reason = "button") => {
+    const previousMeta = getSiteMeta(site);
+    const nextMeta = {
       fields: linesFromValue(profile.querySelector("#siteFieldsEditor").value),
       processes: linesFromValue(profile.querySelector("#siteProcessesEditor").value),
       notes: profile.querySelector("#siteNotesEditor").value.trim(),
     };
 
-    const saved = await saveCmsState();
+    cmsState.siteMeta = cmsState.siteMeta || {};
+    cmsState.siteMeta[site.id] = nextMeta;
+
+    const saved = await saveCmsState(cmsEvent("site.updated", reason === "autosave" ? "Автоматично обновени данни за сайт" : "Обновени са данни за сайт", {
+      siteId: site.id,
+      description: `${site.name}: променени са полета, процеси или бележки.`,
+      changeText: buildFieldChangeText(previousMeta, nextMeta, [
+        { key: "fields", label: "Полета / данни" },
+        { key: "processes", label: "Процеси" },
+        { key: "notes", label: "Бележки" },
+      ]),
+    }));
     const status = profile.querySelector("#siteMetaStatus");
-    if (status) status.textContent = saved ? "Записано" : "Не е записано";
+    if (status) status.textContent = saved ? (reason === "autosave" ? "Автозаписано" : "Записано") : "Не е записано";
+  };
+
+  profile.querySelector(".site-meta-save")?.addEventListener("click", () => saveSiteMeta("button"));
+  profile.querySelectorAll(".site-meta-textarea").forEach((textarea) => {
+    textarea.addEventListener("input", () => {
+      window.clearTimeout(autosaveTimers.get(`siteMeta:${site.id}`));
+      autosaveTimers.set(`siteMeta:${site.id}`, window.setTimeout(() => saveSiteMeta("autosave"), 1200));
+    });
   });
 }
 
@@ -894,17 +1002,41 @@ function bindSiteDetailSave(profile, site, groupTitle, itemLabel) {
   const button = profile.querySelector(".site-detail-save");
   if (!button) return;
 
-  button.addEventListener("click", async () => {
-    cmsState.details[makeStateKey(site.id, groupTitle, itemLabel)] = {
+  const saveSiteDetail = async (reason = "button") => {
+    const stateKey = makeStateKey(site.id, groupTitle, itemLabel);
+    const hadSavedDetail = Boolean(cmsState.details[stateKey]);
+    const previousDetail = getModuleDetail(site, groupTitle, itemLabel);
+    const nextDetail = {
       summary: profile.querySelector("#siteDetailSummary").value.trim(),
       includes: linesFromValue(profile.querySelector("#siteDetailIncludes").value),
       fields: linesFromValue(profile.querySelector("#siteDetailFields").value),
       note: profile.querySelector("#siteDetailNote").value.trim(),
     };
+    cmsState.details[stateKey] = nextDetail;
 
-    const saved = await saveCmsState();
+    const saved = await saveCmsState(cmsEvent(hadSavedDetail ? "detail.updated" : "detail.created", reason === "autosave" ? "Автоматично обновено описание" : hadSavedDetail ? "Обновено е описание" : "Добавено е описание", {
+      siteId: site.id,
+      moduleGroup: groupTitle,
+      moduleName: itemLabel,
+      description: `${site.name}: променено е описание за "${itemLabel}" (${groupTitle}).`,
+      changeText: buildFieldChangeText(previousDetail, nextDetail, [
+        { key: "summary", label: "Кратко описание" },
+        { key: "includes", label: "Какво включва" },
+        { key: "fields", label: "Полета / данни" },
+        { key: "note", label: "Бележка за заданието" },
+      ]),
+    }));
     const status = profile.querySelector("#siteDetailStatus");
-    if (status) status.textContent = saved ? "Записано" : "Не е записано";
+    if (status) status.textContent = saved ? (reason === "autosave" ? "Автозаписано" : "Записано") : "Не е записано";
+  };
+
+  button.addEventListener("click", () => saveSiteDetail("button"));
+  ["#siteDetailSummary", "#siteDetailIncludes", "#siteDetailFields", "#siteDetailNote"].forEach((selector) => {
+    profile.querySelector(selector)?.addEventListener("input", () => {
+      const timerKey = `detail:${site.id}:${groupTitle}:${itemLabel}`;
+      window.clearTimeout(autosaveTimers.get(timerKey));
+      autosaveTimers.set(timerKey, window.setTimeout(() => saveSiteDetail("autosave"), 1200));
+    });
   });
 }
 
@@ -2260,7 +2392,7 @@ async function loadCmsState() {
   }
 }
 
-async function saveCmsState() {
+async function saveCmsState(event = null) {
   if (!location.protocol.startsWith("http")) {
     setEditorHint("За реален Save отвори страницата през локалния server, не директно като файл.", true);
     return false;
@@ -2269,7 +2401,7 @@ async function saveCmsState() {
   const response = await fetch("api/state", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(cmsState),
+    body: JSON.stringify(event ? { ...cmsState, _cmsEvent: event } : cmsState),
   });
 
   if (!response.ok) {
@@ -2637,19 +2769,33 @@ async function saveEditorChanges() {
   const siteId = document.querySelector("#editorDetailSite").value;
   const checkedSiteIds = [...document.querySelectorAll("#editorSites input:checked")].map((input) => input.value);
   const assignmentKey = makeAssignmentKey(groupTitle, itemLabel);
-
-  cmsState.assignments[assignmentKey] = checkedSiteIds;
-  cmsState.details[makeStateKey(siteId, groupTitle, itemLabel)] = {
+  const site = siteById(siteId) || sites[0];
+  const previousDetail = getModuleDetail(site, groupTitle, itemLabel);
+  const nextDetail = {
     summary: document.querySelector("#editorSummary").value.trim(),
     includes: linesFromTextarea("#editorIncludes"),
     fields: linesFromTextarea("#editorFields"),
     note: document.querySelector("#editorNote").value.trim(),
   };
 
+  cmsState.assignments[assignmentKey] = checkedSiteIds;
+  cmsState.details[makeStateKey(siteId, groupTitle, itemLabel)] = nextDetail;
+
   applySavedAssignments();
   renderSiteTabs();
   renderSiteProfile(siteId);
-  await saveCmsState();
+  await saveCmsState(cmsEvent("editor.saved", "Запазена е редакция от общия редактор", {
+    siteId,
+    moduleGroup: groupTitle,
+    moduleName: itemLabel,
+    description: `${siteById(siteId)?.name || siteId}: запазени са сайтове и описание за "${itemLabel}".`,
+    changeText: buildFieldChangeText(previousDetail, nextDetail, [
+      { key: "summary", label: "Кратко описание" },
+      { key: "includes", label: "Какво включва" },
+      { key: "fields", label: "Полета / данни" },
+      { key: "note", label: "Бележка за заданието" },
+    ]) || `Избрани сайтове:\n${checkedSiteIds.map((id) => siteById(id)?.name || id).join("\n") || "(няма)"}`,
+  }));
   loadEditorDetail();
 }
 
@@ -2714,7 +2860,9 @@ async function importCmsJson(event) {
   renderSiteProfile(sites[0].id);
   renderEditorSites();
   loadEditorDetail();
-  await saveCmsState();
+  await saveCmsState(cmsEvent("state.imported", "Импортиран е CMS JSON", {
+    description: "Импортиран е нов cms-state.json през интерфейса.",
+  }));
 }
 
 function setEditorHint(message, isError = false) {
@@ -2850,7 +2998,11 @@ function bindCreateModuleForm(container) {
     cmsState.customModules.push({ groupTitle, itemLabel, type });
     applyCustomModules();
     persistModuleLayout();
-    const saved = await saveCmsState();
+    const saved = await saveCmsState(cmsEvent("module.created", "Създаден е модул", {
+      moduleGroup: groupTitle,
+      moduleName: itemLabel,
+      description: `Модулът "${itemLabel}" е добавен в група "${groupTitle}".`,
+    }));
     renderModuleGroups(groupTitle, itemLabel);
     document.querySelector("#moduleAssignmentStatus").textContent = saved ? "Записано" : "Не е записано";
   });
@@ -2886,7 +3038,9 @@ function renderMvpAndQuestions() {
     checkbox.addEventListener("change", async () => {
       cmsState.checkedQuestions = cmsState.checkedQuestions || {};
       cmsState.checkedQuestions[checkbox.dataset.question] = checkbox.checked;
-      await saveCmsState();
+      await saveCmsState(cmsEvent("question.updated", checkbox.checked ? "Маркиран е въпрос" : "Размаркиран е въпрос", {
+        description: checkbox.dataset.question,
+      }));
     });
   });
 }
@@ -2907,7 +3061,9 @@ function bindMvpAndQuestionForms() {
     cmsState.customMvpItems.push({ phase, text });
     input.value = "";
     renderMvpAndQuestions();
-    const saved = await saveCmsState();
+    const saved = await saveCmsState(cmsEvent("mvp.created", "Добавена е MVP точка", {
+      description: text,
+    }));
     status.classList.remove("error");
     status.textContent = saved ? "Записано" : "Не е записано";
   });
@@ -2926,7 +3082,9 @@ function bindMvpAndQuestionForms() {
     cmsState.customQuestions.push(text);
     input.value = "";
     renderMvpAndQuestions();
-    const saved = await saveCmsState();
+    const saved = await saveCmsState(cmsEvent("question.created", "Добавен е въпрос", {
+      description: text,
+    }));
     status.classList.remove("error");
     status.textContent = saved ? "Записано" : "Не е записано";
   });
@@ -3029,7 +3187,11 @@ async function moveModule(oldGroupTitle, itemLabel, newGroupTitle, beforeItemLab
   renderModuleGroups(newGroupTitle, itemLabel);
   renderSiteTabs();
   renderSiteProfile(sites[0].id);
-  const saved = await saveCmsState();
+  const saved = await saveCmsState(cmsEvent("module.moved", "Преместен е модул", {
+    moduleGroup: newGroupTitle,
+    moduleName: itemLabel,
+    description: `Модулът "${itemLabel}" е преместен от "${oldGroupTitle}" към "${newGroupTitle}".`,
+  }));
   document.querySelector("#moduleAssignmentStatus").textContent = saved ? "Записано" : "Не е записано";
 }
 
@@ -3044,7 +3206,11 @@ async function renameModule(groupTitle, oldItemLabel, newItemLabel) {
   renderModuleGroups(groupTitle, newItemLabel);
   renderSiteTabs();
   renderSiteProfile(sites[0].id);
-  const saved = await saveCmsState();
+  const saved = await saveCmsState(cmsEvent("module.renamed", "Преименуван е модул", {
+    moduleGroup: groupTitle,
+    moduleName: newItemLabel,
+    description: `Модулът "${oldItemLabel}" е преименуван на "${newItemLabel}".`,
+  }));
   document.querySelector("#moduleAssignmentStatus").textContent = saved ? "Записано" : "Не е записано";
 }
 
@@ -3212,7 +3378,11 @@ async function deleteModule(groupTitle, itemLabel) {
   renderModuleGroups();
   renderSiteTabs();
   renderSiteProfile(sites[0].id);
-  const saved = await saveCmsState();
+  const saved = await saveCmsState(cmsEvent("module.deleted", "Изтрит е модул", {
+    moduleGroup: groupTitle,
+    moduleName: itemLabel,
+    description: `Модулът "${itemLabel}" е изтрит от група "${groupTitle}".`,
+  }));
   const status = document.querySelector("#moduleAssignmentStatus");
   if (status) status.textContent = saved ? "Записано" : "Не е записано";
 }
@@ -3250,13 +3420,26 @@ function renderModuleAssignment(groupTitle, itemLabel) {
     </div>
   `;
 
-  panel.querySelector(".module-assignment-save").addEventListener("click", async () => {
-    cmsState.assignments[key] = [...panel.querySelectorAll(".assignment-sites input:checked")].map((input) => input.value);
+  const saveAssignment = async (reason = "button") => {
+    const previousSiteIds = [...(cmsState.assignments[key] || [])];
+    const nextSiteIds = [...panel.querySelectorAll(".assignment-sites input:checked")].map((input) => input.value);
+    cmsState.assignments[key] = nextSiteIds;
     applySavedAssignments();
     renderSiteTabs();
     renderSiteProfile(sites[0].id);
-    const saved = await saveCmsState();
-    panel.querySelector("#moduleAssignmentStatus").textContent = saved ? "Записано" : "Не е записано";
+    const saved = await saveCmsState(cmsEvent("assignment.updated", "Обновено е разпределение на модул", {
+      moduleGroup: groupTitle,
+      moduleName: itemLabel,
+      description: `Променени са сайтовете, към които е закачен модулът "${itemLabel}".`,
+      changeText: buildAssignmentChangeText(previousSiteIds, nextSiteIds),
+    }));
+    const status = document.querySelector("#moduleAssignmentStatus");
+    if (status) status.textContent = saved ? (reason === "autosave" ? "Автозаписано" : "Записано") : "Не е записано";
+  };
+
+  panel.querySelector(".module-assignment-save").addEventListener("click", () => saveAssignment("button"));
+  panel.querySelectorAll(".assignment-sites input").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => saveAssignment("autosave"));
   });
 }
 

@@ -1,0 +1,67 @@
+{
+  "name": "Global CMS Map Telegram Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cms-events",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "6f8658cd-7c14-4f9e-a85d-36f64525c001",
+      "name": "CMS Event Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ],
+      "webhookId": "global-cms-map-events"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "REPLACE_TELEGRAM_CHAT_ID",
+        "text": "={{ [($json.body.action || $json.body.title || 'CMS промяна'), ($json.body.siteName ? 'Сайт: ' + $json.body.siteName : ''), ($json.body.moduleGroup ? 'Група: ' + $json.body.moduleGroup : ''), ($json.body.moduleName ? 'Модул: ' + $json.body.moduleName : ''), ($json.body.changeText || $json.body.description || '')].filter(Boolean).join('\\n') }}",
+        "additionalFields": {
+          "disable_web_page_preview": true,
+          "appendAttribution": false
+        }
+      },
+      "id": "ce3fd61f-2a26-4c67-8be6-7ef552d6404b",
+      "name": "Send Telegram Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "CMS Event Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-06-01T00:00:00.000Z",
+  "versionId": "global-cms-map-telegram-safe-v1"
+}
