@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="bg">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Global CMS - карта на сайтовете</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>Global CMS - карта на сайтовете</h1>
+      </div>
+      <button class="header-export" id="exportExcelBtn" type="button">Експорт Excel</button>
+    </header>
+
+    <main class="app-shell">
+      <div class="file-warning" id="fileWarning">
+        За да работи Save към cms-state.json, стартирай проекта през START-CMS.bat.
+      </div>
+
+      <nav class="main-tabs" aria-label="Основна навигация">
+        <button class="tab-button active" data-view="sites" type="button">Сайтове</button>
+        <button class="tab-button" data-view="modules" type="button">Модули</button>
+        <button class="tab-button" data-view="mvp" type="button">MVP</button>
+        <button class="tab-button" data-view="questions" type="button">Въпроси</button>
+      </nav>
+
+      <section class="view active" id="sites">
+        <div class="section-heading">
+          <div>
+            <h2>Профили на сайтовете</h2>
+            <p>Избери сайт, за да видиш типа, активните CMS менюта, полета и специфични процеси.</p>
+          </div>
+        </div>
+
+        <div class="site-tabs" id="siteTabs" aria-label="Сайтове"></div>
+        <article class="site-profile" id="siteProfile"></article>
+      </section>
+
+      <section class="view" id="modules">
+        <div class="section-heading">
+          <div>
+            <h2>Обща CMS йерархия</h2>
+            <p>Предложение за модулна навигация след избор на конкретен сайт.</p>
+          </div>
+        </div>
+
+        <div class="module-manager">
+          <div class="module-grid" id="moduleGroups"></div>
+          <aside class="panel module-assignment" id="moduleAssignment"></aside>
+        </div>
+      </section>
+
+      <section class="view" id="mvp">
+        <div class="section-heading">
+          <div>
+            <h2>MVP обхват</h2>
+            <p>Първа версия, която да даде реална стойност без да се опитва да покрие всичко наведнъж.</p>
+          </div>
+        </div>
+
+        <div class="priority-grid">
+          <div class="panel">
+            <h3>Фаза 1</h3>
+            <ul class="check-list">
+              <li>Избор на сайт от Global CMS</li>
+              <li>Зареждане на активни модули според сайта</li>
+              <li>Продукти / машини / категории</li>
+              <li>Страници, новини, банери и SEO</li>
+              <li>Поръчки за онлайн магазини</li>
+              <li>Запитвания за каталожни сайтове</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Фаза 2</h3>
+            <ul class="check-list muted">
+              <li>Импорт / експорт</li>
+              <li>Мейлинг и промо кодове</li>
+              <li>История на промени</li>
+              <li>Логове и синхронизации</li>
+              <li>Разширени роли и права</li>
+              <li>Специфични интеграции по сайт</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="questions">
+        <div class="section-heading">
+          <div>
+            <h2>Въпроси към екипа</h2>
+            <p>Тук събираме неяснотите, преди да станат скъпи за разработка.</p>
+          </div>
+        </div>
+
+        <div class="questions-list">
+          <label class="question-item">
+            <input type="checkbox" />
+            <span>Всеки сайт ли ще има отделна директна връзка към собствена база данни?</span>
+          </label>
+          <label class="question-item">
+            <input type="checkbox" />
+            <span>Кои таблици остават само за четене и кои ще се редактират от CMS?</span>
+          </label>
+          <label class="question-item">
+            <input type="checkbox" />
+            <span>Rentex rental логиката отделен модул ли е или разширение на продуктите?</span>
+          </label>
+          <label class="question-item">
+            <input type="checkbox" />
+            <span>Има ли обща структура за SEO полета във всички сайтове?</span>
+          </label>
+          <label class="question-item">
+            <input type="checkbox" />
+            <span>Какви роли ще има: админ, редактор, маркетинг, склад, продажби?</span>
+          </label>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
