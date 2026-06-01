@@ -56,25 +56,24 @@
         <div class="priority-grid">
           <div class="panel">
             <h3>Фаза 1</h3>
-            <ul class="check-list">
-              <li>Избор на сайт от Global CMS</li>
-              <li>Зареждане на активни модули според сайта</li>
-              <li>Продукти / машини / категории</li>
-              <li>Страници, новини, банери и SEO</li>
-              <li>Поръчки за онлайн магазини</li>
-              <li>Запитвания за каталожни сайтове</li>
-            </ul>
+            <ul class="check-list" id="mvpPhase1"></ul>
           </div>
           <div class="panel">
             <h3>Фаза 2</h3>
-            <ul class="check-list muted">
-              <li>Импорт / експорт</li>
-              <li>Мейлинг и промо кодове</li>
-              <li>История на промени</li>
-              <li>Логове и синхронизации</li>
-              <li>Разширени роли и права</li>
-              <li>Специфични интеграции по сайт</li>
-            </ul>
+            <ul class="check-list muted" id="mvpPhase2"></ul>
+          </div>
+        </div>
+
+        <div class="panel add-inline-panel">
+          <h3>Добави MVP точка</h3>
+          <div class="inline-add-form">
+            <select id="newMvpPhase">
+              <option value="phase1">Фаза 1</option>
+              <option value="phase2">Фаза 2</option>
+            </select>
+            <input id="newMvpText" type="text" placeholder="Нова MVP точка" />
+            <button class="primary-button" id="addMvpBtn" type="button">Добави</button>
+            <span class="save-status" id="mvpStatus"></span>
           </div>
         </div>
       </section>
@@ -87,27 +86,15 @@
           </div>
         </div>
 
-        <div class="questions-list">
-          <label class="question-item">
-            <input type="checkbox" />
-            <span>Всеки сайт ли ще има отделна директна връзка към собствена база данни?</span>
-          </label>
-          <label class="question-item">
-            <input type="checkbox" />
-            <span>Кои таблици остават само за четене и кои ще се редактират от CMS?</span>
-          </label>
-          <label class="question-item">
-            <input type="checkbox" />
-            <span>Rentex rental логиката отделен модул ли е или разширение на продуктите?</span>
-          </label>
-          <label class="question-item">
-            <input type="checkbox" />
-            <span>Има ли обща структура за SEO полета във всички сайтове?</span>
-          </label>
-          <label class="question-item">
-            <input type="checkbox" />
-            <span>Какви роли ще има: админ, редактор, маркетинг, склад, продажби?</span>
-          </label>
+        <div class="questions-list" id="questionsList"></div>
+
+        <div class="panel add-inline-panel">
+          <h3>Добави въпрос</h3>
+          <div class="inline-add-form">
+            <input id="newQuestionText" type="text" placeholder="Нов въпрос към екипа" />
+            <button class="primary-button" id="addQuestionBtn" type="button">Добави</button>
+            <span class="save-status" id="questionStatus"></span>
+          </div>
         </div>
       </section>
     </main>

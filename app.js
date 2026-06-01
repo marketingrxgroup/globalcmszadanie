@@ -538,6 +538,33 @@ const cellLabels = {
   no: "-",
 };
 
+const defaultMvpItems = {
+  phase1: [
+    "Избор на сайт от Global CMS",
+    "Зареждане на активни модули според сайта",
+    "Продукти / машини / категории",
+    "Страници, новини, банери и SEO",
+    "Поръчки за онлайн магазини",
+    "Запитвания за каталожни сайтове",
+  ],
+  phase2: [
+    "Импорт / експорт",
+    "Мейлинг и промо кодове",
+    "История на промени",
+    "Логове и синхронизации",
+    "Разширени роли и права",
+    "Специфични интеграции по сайт",
+  ],
+};
+
+const defaultQuestions = [
+  "Всеки сайт ли ще има отделна директна връзка към собствена база данни?",
+  "Кои таблици остават само за четене и кои ще се редактират от CMS?",
+  "Rentex rental логиката отделен модул ли е или разширение на продуктите?",
+  "Има ли обща структура за SEO полета във всички сайтове?",
+  "Какви роли ще има: админ, редактор, маркетинг, склад, продажби?",
+];
+
 let cmsState = {
   assignments: {},
   details: {},
@@ -545,6 +572,9 @@ let cmsState = {
   customModules: [],
   moduleLayout: null,
   collapsedTreeGroups: {},
+  customMvpItems: [],
+  customQuestions: [],
+  checkedQuestions: {},
 };
 
 let collapsedTreeGroups = {};
@@ -2136,6 +2166,9 @@ async function loadCmsState() {
       customModules: loaded.customModules || [],
       moduleLayout: loaded.moduleLayout || null,
       collapsedTreeGroups: loaded.collapsedTreeGroups || {},
+      customMvpItems: loaded.customMvpItems || [],
+      customQuestions: loaded.customQuestions || [],
+      checkedQuestions: loaded.checkedQuestions || {},
     };
     collapsedTreeGroups = { ...cmsState.collapsedTreeGroups };
     applyModuleStructureFromState();
@@ -2388,6 +2421,9 @@ async function importCmsJson(event) {
     customModules: imported.customModules || [],
     moduleLayout: imported.moduleLayout || null,
     collapsedTreeGroups: imported.collapsedTreeGroups || {},
+    customMvpItems: imported.customMvpItems || [],
+    customQuestions: imported.customQuestions || [],
+    checkedQuestions: imported.checkedQuestions || {},
   };
 
   collapsedTreeGroups = { ...cmsState.collapsedTreeGroups };
@@ -2536,6 +2572,86 @@ function bindCreateModuleForm(container) {
     renderModuleGroups(groupTitle, itemLabel);
     document.querySelector("#moduleAssignmentStatus").textContent = saved ? "Записано" : "Не е записано";
   });
+}
+
+function renderMvpAndQuestions() {
+  const phase1 = document.querySelector("#mvpPhase1");
+  const phase2 = document.querySelector("#mvpPhase2");
+  const questionsList = document.querySelector("#questionsList");
+  if (!phase1 || !phase2 || !questionsList) return;
+
+  const customMvp = cmsState.customMvpItems || [];
+  const phase1Items = [...defaultMvpItems.phase1, ...customMvp.filter((item) => item.phase === "phase1").map((item) => item.text)];
+  const phase2Items = [...defaultMvpItems.phase2, ...customMvp.filter((item) => item.phase === "phase2").map((item) => item.text)];
+  phase1.innerHTML = phase1Items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  phase2.innerHTML = phase2Items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+
+  const questions = [...defaultQuestions, ...(cmsState.customQuestions || [])];
+  questionsList.innerHTML = questions
+    .map((question) => {
+      const key = makeQuestionKey(question);
+      const checked = cmsState.checkedQuestions?.[key] ? "checked" : "";
+      return `
+        <label class="question-item">
+          <input type="checkbox" data-question="${escapeAttr(key)}" ${checked} />
+          <span>${escapeHtml(question)}</span>
+        </label>
+      `;
+    })
+    .join("");
+
+  questionsList.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+    checkbox.addEventListener("change", async () => {
+      cmsState.checkedQuestions = cmsState.checkedQuestions || {};
+      cmsState.checkedQuestions[checkbox.dataset.question] = checkbox.checked;
+      await saveCmsState();
+    });
+  });
+}
+
+function bindMvpAndQuestionForms() {
+  document.querySelector("#addMvpBtn")?.addEventListener("click", async () => {
+    const phase = document.querySelector("#newMvpPhase").value;
+    const input = document.querySelector("#newMvpText");
+    const status = document.querySelector("#mvpStatus");
+    const text = input.value.trim();
+    if (!text) {
+      status.textContent = "Попълни текст";
+      status.classList.add("error");
+      return;
+    }
+
+    cmsState.customMvpItems = cmsState.customMvpItems || [];
+    cmsState.customMvpItems.push({ phase, text });
+    input.value = "";
+    renderMvpAndQuestions();
+    const saved = await saveCmsState();
+    status.classList.remove("error");
+    status.textContent = saved ? "Записано" : "Не е записано";
+  });
+
+  document.querySelector("#addQuestionBtn")?.addEventListener("click", async () => {
+    const input = document.querySelector("#newQuestionText");
+    const status = document.querySelector("#questionStatus");
+    const text = input.value.trim();
+    if (!text) {
+      status.textContent = "Попълни въпрос";
+      status.classList.add("error");
+      return;
+    }
+
+    cmsState.customQuestions = cmsState.customQuestions || [];
+    cmsState.customQuestions.push(text);
+    input.value = "";
+    renderMvpAndQuestions();
+    const saved = await saveCmsState();
+    status.classList.remove("error");
+    status.textContent = saved ? "Записано" : "Не е записано";
+  });
+}
+
+function makeQuestionKey(question) {
+  return normalizeKey(question);
 }
 
 function bindModuleDragAndRename(container) {
@@ -2736,6 +2852,8 @@ async function initApp() {
   renderSiteTabs();
   renderSiteProfile(sites[0].id);
   renderModuleGroups();
+  renderMvpAndQuestions();
+  bindMvpAndQuestionForms();
 }
 
 initApp();

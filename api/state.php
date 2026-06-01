@@ -22,6 +22,9 @@ function default_state(): array
         'customModules' => [],
         'moduleLayout' => null,
         'collapsedTreeGroups' => new stdClass(),
+        'customMvpItems' => [],
+        'customQuestions' => [],
+        'checkedQuestions' => new stdClass(),
     ];
 }
 
@@ -47,6 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'customModules' => $decoded['customModules'] ?? [],
         'moduleLayout' => $decoded['moduleLayout'] ?? null,
         'collapsedTreeGroups' => $decoded['collapsedTreeGroups'] ?? new stdClass(),
+        'customMvpItems' => $decoded['customMvpItems'] ?? [],
+        'customQuestions' => $decoded['customQuestions'] ?? [],
+        'checkedQuestions' => $decoded['checkedQuestions'] ?? new stdClass(),
     ]);
 }
 
@@ -68,6 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'customModules' => $decoded['customModules'] ?? [],
         'moduleLayout' => $decoded['moduleLayout'] ?? null,
         'collapsedTreeGroups' => $decoded['collapsedTreeGroups'] ?? new stdClass(),
+        'customMvpItems' => $decoded['customMvpItems'] ?? [],
+        'customQuestions' => $decoded['customQuestions'] ?? [],
+        'checkedQuestions' => $decoded['checkedQuestions'] ?? new stdClass(),
     ];
 
     $written = file_put_contents($stateFile, json_encode($state, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);

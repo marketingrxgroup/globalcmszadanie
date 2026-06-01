@@ -161,18 +161,19 @@ body.file-mode .file-warning {
 
 .tab-button {
   color: #fff;
-  border-color: #111827;
-  background: #1f2937;
+  border-color: #14304a;
+  background: #14304a;
 }
 
 .tab-button:hover {
-  background: #111827;
+  border-color: #071522;
+  background: #071522;
 }
 
 .tab-button.active {
   color: #fff;
-  border-color: #000;
-  background: #000;
+  border-color: #071522;
+  background: #071522;
 }
 
 .site-tab {
@@ -883,6 +884,35 @@ body.file-mode .file-warning {
 }
 
 .module-create-form .save-status.error {
+  color: #b42318;
+}
+
+.add-inline-panel {
+  margin-top: 16px;
+}
+
+.inline-add-form {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.35fr) minmax(220px, 1fr) auto minmax(90px, auto);
+  gap: 10px;
+  align-items: center;
+}
+
+#questions .inline-add-form {
+  grid-template-columns: minmax(220px, 1fr) auto minmax(90px, auto);
+}
+
+.inline-add-form input,
+.inline-add-form select {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text);
+  background: #fff;
+}
+
+.inline-add-form .save-status.error {
   color: #b42318;
 }
 
