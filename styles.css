@@ -44,6 +44,73 @@ textarea {
   background: #14304a;
 }
 
+.app-header-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.header-user {
+  max-width: 220px;
+  min-height: 28px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  padding: 0 12px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-user:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.editor-name-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 32, 45, 0.55);
+}
+
+.editor-name-modal[hidden] {
+  display: none;
+}
+
+.editor-name-dialog {
+  width: min(100%, 420px);
+  padding: 22px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.editor-name-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.editor-name-dialog p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.editor-name-dialog input {
+  width: 100%;
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
 .header-export {
   min-height: 28px;
   border: 1px solid rgba(255, 255, 255, 0.35);

@@ -379,11 +379,14 @@ function build_client_cms_event(array $clientEvent): array
         'occurredAt' => gmdate('c'),
         'eventType' => $clientEvent['eventType'] ?? 'state.updated',
         'action' => $action,
+        'authorName' => $clientEvent['authorName'] ?? '',
         'title' => $clientEvent['title'] ?? $action,
         'siteId' => $clientEvent['siteId'] ?? '',
         'siteName' => $clientEvent['siteName'] ?? '',
         'moduleGroup' => $clientEvent['moduleGroup'] ?? '',
         'moduleName' => $clientEvent['moduleName'] ?? '',
+        'questionKey' => $clientEvent['questionKey'] ?? '',
+        'questionText' => $clientEvent['questionText'] ?? '',
         'description' => $clientEvent['description'] ?? $action,
         'changeText' => $clientEvent['changeText'] ?? '',
     ];
@@ -419,6 +422,22 @@ function enrich_client_cms_event(array $clientEvent, array $previousState, array
     if ($eventType === 'assignment.updated') {
         $key = ($clientEvent['moduleGroup'] ?? '') . '||' . ($clientEvent['moduleName'] ?? '');
         $clientEvent['changeText'] = build_assignment_change_text($previousState['assignments'][$key] ?? [], $nextState['assignments'][$key] ?? [], $siteNames);
+    }
+
+    if ($eventType === 'question.answered') {
+        $questionKey = $clientEvent['questionKey'] ?? first_changed_key($previousState['questionAnswers'] ?? [], $nextState['questionAnswers'] ?? []);
+        if ($questionKey !== '') {
+            $label = $clientEvent['questionText'] ?? $clientEvent['description'] ?? $questionKey;
+            $answer = $nextState['questionAnswers'][$questionKey] ?? '';
+            if (($clientEvent['changeText'] ?? '') === '') {
+                $clientEvent['changeText'] = trim((string) $answer) !== ''
+                    ? "Въпрос:\n{$label}\n\nОтговор:\n{$answer}"
+                    : "Въпрос:\n{$label}\n\nОтговор: (изтрит)";
+            }
+            $clientEvent['questionKey'] = $questionKey;
+            $clientEvent['questionText'] = $label;
+            $clientEvent['description'] = $label;
+        }
     }
 
     return $clientEvent;

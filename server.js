@@ -327,11 +327,14 @@ function buildClientCmsEvent(clientEvent = {}) {
     occurredAt: new Date().toISOString(),
     eventType,
     action,
+    authorName: clientEvent.authorName || "",
     title: clientEvent.title || action,
     siteId: clientEvent.siteId || "",
     siteName: clientEvent.siteName || "",
     moduleGroup: clientEvent.moduleGroup || "",
     moduleName: clientEvent.moduleName || "",
+    questionKey: clientEvent.questionKey || "",
+    questionText: clientEvent.questionText || "",
     description: clientEvent.description || action,
     changeText: clientEvent.changeText || "",
   };
@@ -365,6 +368,26 @@ function enrichClientCmsEvent(clientEvent = {}, previousState, nextState) {
     const key = `${clientEvent.moduleGroup || ""}||${clientEvent.moduleName || ""}`;
     const changeText = buildAssignmentChangeText(previousState.assignments?.[key] || [], nextState.assignments?.[key] || []);
     return { ...clientEvent, changeText };
+  }
+
+  if (clientEvent.eventType === "question.answered") {
+    const questionKey =
+      clientEvent.questionKey || firstChangedKey(previousState.questionAnswers || {}, nextState.questionAnswers || {});
+    if (questionKey) {
+      const label = clientEvent.questionText || clientEvent.description || questionKey;
+      const answer = nextState.questionAnswers?.[questionKey] || "";
+      return {
+        ...clientEvent,
+        questionKey,
+        questionText: label,
+        description: label,
+        changeText:
+          clientEvent.changeText ||
+          (String(answer).trim()
+            ? `Въпрос:\n${label}\n\nОтговор:\n${answer}`
+            : `Въпрос:\n${label}\n\nОтговор: (изтрит)`),
+      };
+    }
   }
 
   return clientEvent;

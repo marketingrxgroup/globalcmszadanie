@@ -637,20 +637,109 @@ let cmsState = {
 let collapsedTreeGroups = {};
 const autosaveTimers = new Map();
 const defaultModuleLayout = cloneModuleLayout(moduleGroups);
+const EDITOR_NAME_STORAGE_KEY = "cms_editor_name";
+const EDITOR_NAME_COOKIE = "cms_editor_name";
+const EDITOR_NAME_COOKIE_DAYS = 365;
+
+function readEditorNameCookie() {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${EDITOR_NAME_COOKIE}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function writeEditorNameCookie(name) {
+  const maxAge = EDITOR_NAME_COOKIE_DAYS * 24 * 60 * 60;
+  document.cookie = `${EDITOR_NAME_COOKIE}=${encodeURIComponent(name)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
+
+function getEditorName() {
+  return (localStorage.getItem(EDITOR_NAME_STORAGE_KEY) || readEditorNameCookie() || "").trim();
+}
+
+function setEditorName(name) {
+  const trimmed = String(name || "").trim();
+  if (!trimmed) return false;
+  localStorage.setItem(EDITOR_NAME_STORAGE_KEY, trimmed);
+  writeEditorNameCookie(trimmed);
+  updateEditorNameUi();
+  return true;
+}
+
+function updateEditorNameUi() {
+  const button = document.querySelector("#editorNameBtn");
+  if (!button) return;
+  const name = getEditorName();
+  if (!name) {
+    button.hidden = true;
+    button.textContent = "";
+    return;
+  }
+  button.hidden = false;
+  button.textContent = `Работиш като: ${name}`;
+}
+
+function openEditorNameModal(force = false) {
+  const modal = document.querySelector("#editorNameModal");
+  const input = document.querySelector("#editorNameInput");
+  if (!modal || !input) return;
+
+  input.value = force ? getEditorName() : getEditorName() || "";
+  modal.hidden = false;
+  window.setTimeout(() => input.focus(), 0);
+}
+
+function closeEditorNameModal() {
+  const modal = document.querySelector("#editorNameModal");
+  if (modal) modal.hidden = true;
+}
+
+function initEditorName() {
+  updateEditorNameUi();
+  if (!getEditorName()) {
+    openEditorNameModal();
+  }
+
+  document.querySelector("#editorNameSaveBtn")?.addEventListener("click", () => {
+    const input = document.querySelector("#editorNameInput");
+    const name = input?.value.trim() || "";
+    if (!name) {
+      input?.focus();
+      return;
+    }
+    setEditorName(name);
+    closeEditorNameModal();
+  });
+
+  document.querySelector("#editorNameInput")?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      document.querySelector("#editorNameSaveBtn")?.click();
+    }
+  });
+
+  document.querySelector("#editorNameBtn")?.addEventListener("click", () => {
+    openEditorNameModal(true);
+  });
+}
 
 function siteById(siteId) {
   return sites.find((site) => site.id === siteId) || null;
 }
 
 function cmsEvent(eventType, action, details = {}) {
+  const authorName = getEditorName();
+  const prefixedAction = authorName ? `${authorName}: ${action}` : action;
+
   return {
     eventType,
-    action,
-    title: details.title || action,
+    action: prefixedAction,
+    authorName,
+    title: details.title || prefixedAction,
     siteId: details.siteId || "",
     siteName: details.siteName || (details.siteId ? siteById(details.siteId)?.name || details.siteId : ""),
     moduleGroup: details.moduleGroup || "",
     moduleName: details.moduleName || "",
+    questionKey: details.questionKey || "",
+    questionText: details.questionText || "",
     description: details.description || action,
     changeText: details.changeText || "",
   };
@@ -3022,6 +3111,16 @@ function makeQuestionKey(question) {
   return normalizeKey(question);
 }
 
+function resolveQuestionLabel(questionKey) {
+  const visible = getVisibleQuestions().find((question) => makeQuestionKey(question) === questionKey);
+  if (visible) return visible;
+
+  return (
+    [...defaultQuestions, ...(cmsState.customQuestions || [])].find((question) => makeQuestionKey(question) === questionKey) ||
+    questionKey
+  );
+}
+
 function getVisibleQuestions() {
   const deleted = new Set(cmsState.deletedQuestions || []);
   return [...defaultQuestions, ...(cmsState.customQuestions || [])].filter((question) => !deleted.has(makeQuestionKey(question)));
@@ -3058,12 +3157,22 @@ async function deleteQuestion(questionKey, questionText) {
   }
 }
 
-async function saveQuestionAnswer(questionKey, reason = "manual") {
-  const saved = await saveCmsState(
-    cmsEvent("question.updated", reason === "autosave" ? "Автозаписан е отговор" : "Записан е отговор", {
-      description: questionKey,
-    })
-  );
+async function saveQuestionAnswer(questionKey, questionText, reason = "manual") {
+  const label = questionText || resolveQuestionLabel(questionKey);
+  const answer = cmsState.questionAnswers?.[questionKey] || "";
+  const trimmedAnswer = answer.trim();
+  let event = null;
+
+  if (trimmedAnswer || reason !== "autosave") {
+    event = cmsEvent("question.answered", reason === "autosave" ? "Обновен е отговор на въпрос" : "Записан е отговор на въпрос", {
+      questionKey,
+      questionText: label,
+      description: label,
+      changeText: trimmedAnswer ? `Въпрос:\n${label}\n\nОтговор:\n${trimmedAnswer}` : `Въпрос:\n${label}\n\nОтговор: (изтрит)`,
+    });
+  }
+
+  const saved = await saveCmsState(event);
   const status = document.querySelector("#questionStatus");
   if (status && reason !== "autosave") {
     status.classList.remove("error");
@@ -3187,7 +3296,7 @@ function renderMvpAndQuestions() {
           </div>
           <label class="question-answer-field">
             <span>Отговор</span>
-            <textarea class="question-answer" data-question="${escapeAttr(key)}" rows="3" placeholder="Отговор, решение или бележка от екипа">${escapeHtml(answer)}</textarea>
+            <textarea class="question-answer" data-question="${escapeAttr(key)}" data-question-label="${escapeAttr(question)}" rows="3" placeholder="Отговор, решение или бележка от екипа">${escapeHtml(answer)}</textarea>
           </label>
         </article>
       `;
@@ -3221,7 +3330,7 @@ function renderMvpAndQuestions() {
       autosaveTimers.set(
         timerKey,
         window.setTimeout(() => {
-          saveQuestionAnswer(textarea.dataset.question, "autosave");
+          saveQuestionAnswer(textarea.dataset.question, textarea.dataset.questionLabel, "autosave");
         }, 1200)
       );
     });
@@ -3635,6 +3744,7 @@ document.querySelector("#siteTabs").addEventListener("click", (event) => {
 document.querySelector("#exportExcelBtn").addEventListener("click", exportSitesExcel);
 
 async function initApp() {
+  initEditorName();
   await loadCmsState();
   applySavedAssignments();
   syncModuleOrderToSites();

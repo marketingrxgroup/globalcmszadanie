@@ -8,11 +8,21 @@
   </head>
   <body>
     <header class="app-header">
-      <div>
+      <div class="app-header-main">
         <h1>GLOBAL CMS - ЗАДАНИЕ</h1>
+        <button class="header-user" id="editorNameBtn" type="button" hidden></button>
       </div>
       <button class="header-export" id="exportExcelBtn" type="button">Експорт Excel</button>
     </header>
+
+    <div class="editor-name-modal" id="editorNameModal" hidden>
+      <div class="editor-name-dialog" role="dialog" aria-labelledby="editorNameTitle" aria-modal="true">
+        <h2 id="editorNameTitle">Кой работи в CMS?</h2>
+        <p>Името се записва при промените и се праща в Telegram известията.</p>
+        <input id="editorNameInput" type="text" maxlength="80" placeholder="Напр. Митко" />
+        <button class="primary-button" id="editorNameSaveBtn" type="button">Продължи</button>
+      </div>
+    </div>
 
     <main class="app-shell">
       <div class="file-warning" id="fileWarning">
