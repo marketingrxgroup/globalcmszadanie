@@ -21,6 +21,7 @@ function default_state(): array
         'completed' => new stdClass(),
         'customModules' => [],
         'moduleLayout' => null,
+        'collapsedTreeGroups' => new stdClass(),
     ];
 }
 
@@ -45,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'completed' => $decoded['completed'] ?? new stdClass(),
         'customModules' => $decoded['customModules'] ?? [],
         'moduleLayout' => $decoded['moduleLayout'] ?? null,
+        'collapsedTreeGroups' => $decoded['collapsedTreeGroups'] ?? new stdClass(),
     ]);
 }
 
@@ -65,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'completed' => $decoded['completed'] ?? new stdClass(),
         'customModules' => $decoded['customModules'] ?? [],
         'moduleLayout' => $decoded['moduleLayout'] ?? null,
+        'collapsedTreeGroups' => $decoded['collapsedTreeGroups'] ?? new stdClass(),
     ];
 
     $written = file_put_contents($stateFile, json_encode($state, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);

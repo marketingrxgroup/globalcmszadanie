@@ -544,9 +544,10 @@ let cmsState = {
   completed: {},
   customModules: [],
   moduleLayout: null,
+  collapsedTreeGroups: {},
 };
 
-const collapsedTreeGroups = {};
+let collapsedTreeGroups = {};
 const defaultModuleLayout = cloneModuleLayout(moduleGroups);
 
 if (location.protocol === "file:") {
@@ -666,14 +667,16 @@ function renderSiteProfile(siteId) {
   });
 
   profile.querySelectorAll(".tree-toggle").forEach((toggle) => {
-    toggle.addEventListener("click", () => {
+    toggle.addEventListener("click", async () => {
       const group = toggle.closest(".tree-group");
       const key = makeTreeCollapseKey(toggle.dataset.site, toggle.dataset.group);
       const collapsed = !group.classList.contains("collapsed");
       collapsedTreeGroups[key] = collapsed;
+      cmsState.collapsedTreeGroups = { ...collapsedTreeGroups };
       group.classList.toggle("collapsed", collapsed);
       toggle.setAttribute("aria-expanded", String(!collapsed));
       toggle.querySelector(".tree-toggle-symbol").textContent = collapsed ? "+" : "-";
+      await saveCmsState();
     });
   });
 
@@ -2132,7 +2135,9 @@ async function loadCmsState() {
       completed: loaded.completed || {},
       customModules: loaded.customModules || [],
       moduleLayout: loaded.moduleLayout || null,
+      collapsedTreeGroups: loaded.collapsedTreeGroups || {},
     };
+    collapsedTreeGroups = { ...cmsState.collapsedTreeGroups };
     applyModuleStructureFromState();
   } catch (error) {
     console.warn("Не мога да заредя cms-state.json", error);
@@ -2382,8 +2387,10 @@ async function importCmsJson(event) {
     completed: imported.completed || {},
     customModules: imported.customModules || [],
     moduleLayout: imported.moduleLayout || null,
+    collapsedTreeGroups: imported.collapsedTreeGroups || {},
   };
 
+  collapsedTreeGroups = { ...cmsState.collapsedTreeGroups };
   applyModuleStructureFromState();
   applySavedAssignments();
   renderSiteTabs();
