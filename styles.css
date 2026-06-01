@@ -706,7 +706,7 @@ body.file-mode .file-warning {
   margin: 0 0 8px;
   font-size: 14px;
   text-transform: uppercase;
-  color: var(--muted);
+  color: #16202a;
 }
 
 .detail-block ul {
@@ -958,7 +958,7 @@ body.file-mode .file-warning {
 .editor-label {
   display: block;
   margin: 14px 0 6px;
-  color: var(--muted);
+  color: #16202a;
   font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
