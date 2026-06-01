@@ -2099,7 +2099,7 @@ async function loadCmsState() {
   }
 
   try {
-    const response = await fetch("/api/state");
+    const response = await fetch("api/state");
     if (!response.ok) throw new Error("state load failed");
     const loaded = await response.json();
     cmsState = {
@@ -2118,7 +2118,7 @@ async function saveCmsState() {
     return false;
   }
 
-  const response = await fetch("/api/state", {
+  const response = await fetch("api/state", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(cmsState),
