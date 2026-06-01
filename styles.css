@@ -461,8 +461,31 @@ body.file-mode .file-warning {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  border: 0;
+  padding: 0;
   margin-bottom: 9px;
+  background: transparent;
+  font: inherit;
   text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tree-parent strong {
+  flex: 1 1 auto;
+}
+
+.tree-toggle-symbol {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .tree-legend {
@@ -521,6 +544,18 @@ body.file-mode .file-warning {
   margin: 0;
   padding: 0 0 0 21px;
   list-style: none;
+}
+
+.tree-group.collapsed {
+  align-self: start;
+}
+
+.tree-group.collapsed .tree-parent {
+  margin-bottom: 0;
+}
+
+.tree-group.collapsed ul {
+  display: none;
 }
 
 .tree-group li {

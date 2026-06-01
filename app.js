@@ -544,6 +544,8 @@ let cmsState = {
   completed: {},
 };
 
+const collapsedTreeGroups = {};
+
 if (location.protocol === "file:") {
   document.body.classList.add("file-mode");
 }
@@ -660,6 +662,18 @@ function renderSiteProfile(siteId) {
     });
   });
 
+  profile.querySelectorAll(".tree-toggle").forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      const group = toggle.closest(".tree-group");
+      const key = makeTreeCollapseKey(toggle.dataset.site, toggle.dataset.group);
+      const collapsed = !group.classList.contains("collapsed");
+      collapsedTreeGroups[key] = collapsed;
+      group.classList.toggle("collapsed", collapsed);
+      toggle.setAttribute("aria-expanded", String(!collapsed));
+      toggle.querySelector(".tree-toggle-symbol").textContent = collapsed ? "+" : "-";
+    });
+  });
+
   autosizeTextareas(profile);
   bindSiteDetailSave(profile, site, firstGroup?.title, firstLabel);
 }
@@ -674,12 +688,15 @@ function setSiteModuleDetail(profile, site, groupTitle, itemLabel, status) {
 function renderMenuTree(site, tree = [], activeGroup = "", activeItem = "") {
   return tree
     .map((group) => {
+      const collapseKey = makeTreeCollapseKey(site.id, group.title);
+      const collapsed = Boolean(collapsedTreeGroups[collapseKey]);
       return `
-        <div class="tree-group ${group.type}">
-          <div class="tree-parent">
+        <div class="tree-group ${group.type}${collapsed ? " collapsed" : ""}">
+          <button class="tree-parent tree-toggle" data-site="${site.id}" data-group="${escapeAttr(group.title)}" type="button" aria-expanded="${String(!collapsed)}">
             <span class="tree-icon"></span>
             <strong>${group.title}</strong>
-          </div>
+            <span class="tree-toggle-symbol" aria-hidden="true">${collapsed ? "+" : "-"}</span>
+          </button>
           <ul>
             ${group.children.map((child) => renderTreeChild(site, group.title, child, activeGroup, activeItem)).join("")}
           </ul>
@@ -2091,6 +2108,10 @@ function makeAssignmentKey(groupTitle, itemLabel) {
 
 function makeStateKey(siteId, groupTitle, itemLabel) {
   return `${siteId}||${groupTitle}||${itemLabel}`;
+}
+
+function makeTreeCollapseKey(siteId, groupTitle) {
+  return `${siteId}||${groupTitle}`;
 }
 
 async function loadCmsState() {
