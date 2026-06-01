@@ -576,6 +576,7 @@ let cmsState = {
   customQuestions: [],
   checkedQuestions: {},
   siteMeta: {},
+  deletedModules: [],
 };
 
 let collapsedTreeGroups = {};
@@ -2198,6 +2199,7 @@ async function loadCmsState() {
       customQuestions: loaded.customQuestions || [],
       checkedQuestions: loaded.checkedQuestions || {},
       siteMeta: loaded.siteMeta || {},
+      deletedModules: loaded.deletedModules || [],
     };
     collapsedTreeGroups = { ...cmsState.collapsedTreeGroups };
     applyModuleStructureFromState();
@@ -2246,12 +2248,16 @@ function applyCustomModules() {
 }
 
 function applyModuleStructureFromState() {
+  applyDeletedModulesToSites();
+
   if (Array.isArray(cmsState.moduleLayout) && cmsState.moduleLayout.length) {
     moduleGroups.splice(0, moduleGroups.length, ...cloneModuleLayout(cmsState.moduleLayout));
+    syncSiteModulesToModuleGroups();
     return;
   }
 
   applyCustomModules();
+  syncSiteModulesToModuleGroups();
 }
 
 function cloneModuleLayout(layout) {
@@ -2264,6 +2270,45 @@ function cloneModuleLayout(layout) {
 
 function persistModuleLayout() {
   cmsState.moduleLayout = cloneModuleLayout(moduleGroups);
+}
+
+function makeModuleKey(groupTitle, itemLabel) {
+  return `${groupTitle}||${itemLabel}`;
+}
+
+function applyDeletedModulesToSites() {
+  const deleted = new Set(cmsState.deletedModules || []);
+  if (!deleted.size) return;
+
+  sites.forEach((site) => {
+    site.menuTree.forEach((group) => {
+      group.children = group.children.filter((child) => {
+        return !deleted.has(makeModuleKey(group.title, getChildLabel(child)));
+      });
+    });
+  });
+}
+
+function syncSiteModulesToModuleGroups() {
+  const deleted = new Set(cmsState.deletedModules || []);
+
+  sites.forEach((site) => {
+    site.menuTree.forEach((siteGroup) => {
+      let group = moduleGroups.find((entry) => entry.title === siteGroup.title);
+      if (!group) {
+        group = { title: siteGroup.title, type: siteGroup.type || "common", items: [] };
+        moduleGroups.push(group);
+      }
+
+      siteGroup.children.forEach((child) => {
+        const label = getChildLabel(child);
+        if (deleted.has(makeModuleKey(siteGroup.title, label))) return;
+        if (label && !group.items.includes(label)) {
+          group.items.push(label);
+        }
+      });
+    });
+  });
 }
 
 function applySavedAssignments() {
@@ -2454,6 +2499,7 @@ async function importCmsJson(event) {
     customQuestions: imported.customQuestions || [],
     checkedQuestions: imported.checkedQuestions || {},
     siteMeta: imported.siteMeta || {},
+    deletedModules: imported.deletedModules || [],
   };
 
   collapsedTreeGroups = { ...cmsState.collapsedTreeGroups };
@@ -2595,6 +2641,7 @@ function bindCreateModuleForm(container) {
     }
 
     cmsState.customModules = cmsState.customModules || [];
+    cmsState.deletedModules = (cmsState.deletedModules || []).filter((key) => key !== makeModuleKey(groupTitle, itemLabel));
     cmsState.customModules.push({ groupTitle, itemLabel, type });
     applyCustomModules();
     persistModuleLayout();
@@ -2834,6 +2881,11 @@ async function deleteModule(groupTitle, itemLabel) {
   if (!group) return;
 
   group.items = group.items.filter((item) => item !== itemLabel);
+  cmsState.deletedModules = cmsState.deletedModules || [];
+  const deletedKey = makeModuleKey(groupTitle, itemLabel);
+  if (!cmsState.deletedModules.includes(deletedKey)) {
+    cmsState.deletedModules.push(deletedKey);
+  }
   cmsState.customModules = (cmsState.customModules || []).filter((item) => {
     return !(item.groupTitle === groupTitle && item.itemLabel === itemLabel);
   });

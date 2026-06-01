@@ -26,6 +26,7 @@ function default_state(): array
         'customQuestions' => [],
         'checkedQuestions' => new stdClass(),
         'siteMeta' => new stdClass(),
+        'deletedModules' => [],
     ];
 }
 
@@ -55,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'customQuestions' => $decoded['customQuestions'] ?? [],
         'checkedQuestions' => $decoded['checkedQuestions'] ?? new stdClass(),
         'siteMeta' => $decoded['siteMeta'] ?? new stdClass(),
+        'deletedModules' => $decoded['deletedModules'] ?? [],
     ]);
 }
 
@@ -80,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'customQuestions' => $decoded['customQuestions'] ?? [],
         'checkedQuestions' => $decoded['checkedQuestions'] ?? new stdClass(),
         'siteMeta' => $decoded['siteMeta'] ?? new stdClass(),
+        'deletedModules' => $decoded['deletedModules'] ?? [],
     ];
 
     $written = file_put_contents($stateFile, json_encode($state, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
