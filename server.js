@@ -56,7 +56,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.url === "/api/state" && req.method === "GET") {
       if (!fs.existsSync(stateFile)) {
-        fs.writeFileSync(stateFile, JSON.stringify({ assignments: {}, details: {}, completed: {}, customModules: [] }, null, 2));
+        fs.writeFileSync(stateFile, JSON.stringify({ assignments: {}, details: {}, completed: {}, customModules: [], moduleLayout: null }, null, 2));
       }
       send(res, 200, fs.readFileSync(stateFile, "utf8"));
       return;
@@ -70,6 +70,7 @@ const server = http.createServer(async (req, res) => {
         details: parsed.details || {},
         completed: parsed.completed || {},
         customModules: parsed.customModules || [],
+        moduleLayout: parsed.moduleLayout || null,
       };
       fs.writeFileSync(stateFile, JSON.stringify(state, null, 2), "utf8");
       send(res, 200, JSON.stringify({ ok: true }));

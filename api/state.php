@@ -20,6 +20,7 @@ function default_state(): array
         'details' => new stdClass(),
         'completed' => new stdClass(),
         'customModules' => [],
+        'moduleLayout' => null,
     ];
 }
 
@@ -43,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'details' => $decoded['details'] ?? new stdClass(),
         'completed' => $decoded['completed'] ?? new stdClass(),
         'customModules' => $decoded['customModules'] ?? [],
+        'moduleLayout' => $decoded['moduleLayout'] ?? null,
     ]);
 }
 
@@ -62,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'details' => $decoded['details'] ?? new stdClass(),
         'completed' => $decoded['completed'] ?? new stdClass(),
         'customModules' => $decoded['customModules'] ?? [],
+        'moduleLayout' => $decoded['moduleLayout'] ?? null,
     ];
 
     $written = file_put_contents($stateFile, json_encode($state, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);

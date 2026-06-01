@@ -543,9 +543,11 @@ let cmsState = {
   details: {},
   completed: {},
   customModules: [],
+  moduleLayout: null,
 };
 
 const collapsedTreeGroups = {};
+const defaultModuleLayout = cloneModuleLayout(moduleGroups);
 
 if (location.protocol === "file:") {
   document.body.classList.add("file-mode");
@@ -2129,8 +2131,9 @@ async function loadCmsState() {
       details: loaded.details || {},
       completed: loaded.completed || {},
       customModules: loaded.customModules || [],
+      moduleLayout: loaded.moduleLayout || null,
     };
-    applyCustomModules();
+    applyModuleStructureFromState();
   } catch (error) {
     console.warn("Не мога да заредя cms-state.json", error);
   }
@@ -2173,6 +2176,27 @@ function applyCustomModules() {
       group.items.push(itemLabel);
     }
   });
+}
+
+function applyModuleStructureFromState() {
+  if (Array.isArray(cmsState.moduleLayout) && cmsState.moduleLayout.length) {
+    moduleGroups.splice(0, moduleGroups.length, ...cloneModuleLayout(cmsState.moduleLayout));
+    return;
+  }
+
+  applyCustomModules();
+}
+
+function cloneModuleLayout(layout) {
+  return layout.map((group) => ({
+    title: group.title,
+    type: group.type || "common",
+    items: [...(group.items || [])],
+  }));
+}
+
+function persistModuleLayout() {
+  cmsState.moduleLayout = cloneModuleLayout(moduleGroups);
 }
 
 function applySavedAssignments() {
@@ -2357,9 +2381,10 @@ async function importCmsJson(event) {
     details: imported.details || {},
     completed: imported.completed || {},
     customModules: imported.customModules || [],
+    moduleLayout: imported.moduleLayout || null,
   };
 
-  applyCustomModules();
+  applyModuleStructureFromState();
   applySavedAssignments();
   renderSiteTabs();
   renderSiteProfile(sites[0].id);
@@ -2416,15 +2441,15 @@ function renderModuleGroups(selectedGroupTitle = "", selectedItemLabel = "") {
     ${moduleGroups
     .map((group) => {
       return `
-        <div class="module-card">
+        <div class="module-card module-dropzone" data-group="${escapeAttr(group.title)}">
           <h3>${group.title}<span class="module-tag ${group.type}">${typeLabels[group.type]}</span></h3>
-          <ul class="module-picker-list">
+          <ul class="module-picker-list" data-group="${escapeAttr(group.title)}">
             ${group.items
               .map((item) => {
                 const active = group.title === activeGroup.title && item === activeItem ? " active" : "";
                 return `
                   <li>
-                    <button class="module-picker${active}" data-group="${escapeAttr(group.title)}" data-item="${escapeAttr(item)}" type="button">${item}</button>
+                    <button class="module-picker${active}" data-group="${escapeAttr(group.title)}" data-item="${escapeAttr(item)}" type="button" draggable="true" title="Drag за преместване, double click за преименуване">${item}</button>
                   </li>
                 `;
               })
@@ -2437,6 +2462,7 @@ function renderModuleGroups(selectedGroupTitle = "", selectedItemLabel = "") {
   `;
 
   bindCreateModuleForm(container);
+  bindModuleDragAndRename(container);
   renderModuleAssignment(activeGroup.title, activeItem);
 
   container.querySelectorAll(".module-picker").forEach((button) => {
@@ -2483,10 +2509,127 @@ function bindCreateModuleForm(container) {
     cmsState.customModules = cmsState.customModules || [];
     cmsState.customModules.push({ groupTitle, itemLabel, type });
     applyCustomModules();
+    persistModuleLayout();
     const saved = await saveCmsState();
     renderModuleGroups(groupTitle, itemLabel);
     document.querySelector("#moduleAssignmentStatus").textContent = saved ? "Записано" : "Не е записано";
   });
+}
+
+function bindModuleDragAndRename(container) {
+  container.querySelectorAll(".module-picker").forEach((button) => {
+    button.addEventListener("dragstart", (event) => {
+      button.classList.add("dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData(
+        "application/json",
+        JSON.stringify({ groupTitle: button.dataset.group, itemLabel: button.dataset.item })
+      );
+    });
+
+    button.addEventListener("dragend", () => {
+      button.classList.remove("dragging");
+      container.querySelectorAll(".module-dropzone").forEach((zone) => zone.classList.remove("drag-over"));
+    });
+
+    button.addEventListener("dblclick", async (event) => {
+      event.preventDefault();
+      const currentName = button.dataset.item;
+      const nextName = window.prompt("Ново име на модула:", currentName);
+      if (!nextName || nextName.trim() === currentName) return;
+      await renameModule(button.dataset.group, currentName, nextName.trim());
+    });
+  });
+
+  container.querySelectorAll(".module-dropzone").forEach((zone) => {
+    zone.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      zone.classList.add("drag-over");
+      event.dataTransfer.dropEffect = "move";
+    });
+
+    zone.addEventListener("dragleave", () => {
+      zone.classList.remove("drag-over");
+    });
+
+    zone.addEventListener("drop", async (event) => {
+      event.preventDefault();
+      zone.classList.remove("drag-over");
+      const payload = JSON.parse(event.dataTransfer.getData("application/json") || "{}");
+      const targetGroup = zone.dataset.group;
+      if (!payload.groupTitle || !payload.itemLabel || !targetGroup || payload.groupTitle === targetGroup) return;
+      await moveModule(payload.groupTitle, payload.itemLabel, targetGroup);
+    });
+  });
+}
+
+async function moveModule(oldGroupTitle, itemLabel, newGroupTitle) {
+  const oldGroup = moduleGroups.find((group) => group.title === oldGroupTitle);
+  const newGroup = moduleGroups.find((group) => group.title === newGroupTitle);
+  if (!oldGroup || !newGroup) return;
+
+  oldGroup.items = oldGroup.items.filter((item) => item !== itemLabel);
+  if (!newGroup.items.includes(itemLabel)) newGroup.items.push(itemLabel);
+
+  migrateModuleReferences(oldGroupTitle, itemLabel, newGroupTitle, itemLabel);
+  persistModuleLayout();
+  applySavedAssignments();
+  renderModuleGroups(newGroupTitle, itemLabel);
+  renderSiteTabs();
+  renderSiteProfile(sites[0].id);
+  const saved = await saveCmsState();
+  document.querySelector("#moduleAssignmentStatus").textContent = saved ? "Записано" : "Не е записано";
+}
+
+async function renameModule(groupTitle, oldItemLabel, newItemLabel) {
+  const group = moduleGroups.find((entry) => entry.title === groupTitle);
+  if (!group || group.items.includes(newItemLabel)) return;
+
+  group.items = group.items.map((item) => (item === oldItemLabel ? newItemLabel : item));
+  migrateModuleReferences(groupTitle, oldItemLabel, groupTitle, newItemLabel);
+  persistModuleLayout();
+  applySavedAssignments();
+  renderModuleGroups(groupTitle, newItemLabel);
+  renderSiteTabs();
+  renderSiteProfile(sites[0].id);
+  const saved = await saveCmsState();
+  document.querySelector("#moduleAssignmentStatus").textContent = saved ? "Записано" : "Не е записано";
+}
+
+function migrateModuleReferences(oldGroupTitle, oldItemLabel, newGroupTitle, newItemLabel) {
+  const oldAssignmentKey = makeAssignmentKey(oldGroupTitle, oldItemLabel);
+  const newAssignmentKey = makeAssignmentKey(newGroupTitle, newItemLabel);
+  const assignedSiteIds = new Set(cmsState.assignments[oldAssignmentKey] || []);
+
+  sites.forEach((site) => {
+    if (siteHasMenuItem(site, oldGroupTitle, oldItemLabel)) assignedSiteIds.add(site.id);
+    removeSiteMenuItem(site, oldGroupTitle, oldItemLabel);
+  });
+
+  if (cmsState.assignments[newAssignmentKey]) {
+    cmsState.assignments[newAssignmentKey].forEach((siteId) => assignedSiteIds.add(siteId));
+  }
+
+  cmsState.assignments[newAssignmentKey] = [...assignedSiteIds];
+  delete cmsState.assignments[oldAssignmentKey];
+  migrateStateKeyMap(cmsState.details, oldGroupTitle, oldItemLabel, newGroupTitle, newItemLabel);
+  migrateStateKeyMap(cmsState.completed, oldGroupTitle, oldItemLabel, newGroupTitle, newItemLabel);
+}
+
+function migrateStateKeyMap(map, oldGroupTitle, oldItemLabel, newGroupTitle, newItemLabel) {
+  Object.keys(map || {}).forEach((key) => {
+    const [siteId, groupTitle, itemLabel] = key.split("||");
+    if (groupTitle !== oldGroupTitle || itemLabel !== oldItemLabel) return;
+    const nextKey = makeStateKey(siteId, newGroupTitle, newItemLabel);
+    map[nextKey] = map[key];
+    delete map[key];
+  });
+}
+
+function removeSiteMenuItem(site, groupTitle, itemLabel) {
+  const group = site.menuTree.find((entry) => entry.title === groupTitle);
+  if (!group) return;
+  group.children = group.children.filter((child) => getChildLabel(child) !== itemLabel);
 }
 
 function renderModuleAssignment(groupTitle, itemLabel) {
