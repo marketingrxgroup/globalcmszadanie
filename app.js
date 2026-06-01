@@ -542,6 +542,7 @@ let cmsState = {
   assignments: {},
   details: {},
   completed: {},
+  customModules: [],
 };
 
 const collapsedTreeGroups = {};
@@ -2127,7 +2128,9 @@ async function loadCmsState() {
       assignments: loaded.assignments || {},
       details: loaded.details || {},
       completed: loaded.completed || {},
+      customModules: loaded.customModules || [],
     };
+    applyCustomModules();
   } catch (error) {
     console.warn("Не мога да заредя cms-state.json", error);
   }
@@ -2154,6 +2157,24 @@ async function saveCmsState() {
   return true;
 }
 
+function applyCustomModules() {
+  (cmsState.customModules || []).forEach((customModule) => {
+    const groupTitle = customModule.groupTitle;
+    const itemLabel = customModule.itemLabel;
+    if (!groupTitle || !itemLabel) return;
+
+    let group = moduleGroups.find((entry) => entry.title === groupTitle);
+    if (!group) {
+      group = { title: groupTitle, type: customModule.type || "common", items: [] };
+      moduleGroups.push(group);
+    }
+
+    if (!group.items.includes(itemLabel)) {
+      group.items.push(itemLabel);
+    }
+  });
+}
+
 function applySavedAssignments() {
   Object.entries(cmsState.assignments).forEach(([key, siteIds]) => {
     const [groupTitle, itemLabel] = key.split("||");
@@ -2168,7 +2189,8 @@ function applySavedAssignments() {
           const exists = group.children.some((child) => getChildLabel(child) === itemLabel);
           if (!exists) group.children.push(suggested(itemLabel));
         } else {
-          site.menuTree.push({ title: groupTitle, type: "common", children: [suggested(itemLabel)] });
+          const moduleGroup = moduleGroups.find((entry) => entry.title === groupTitle);
+          site.menuTree.push({ title: groupTitle, type: moduleGroup?.type || "common", children: [suggested(itemLabel)] });
         }
         return;
       }
@@ -2334,8 +2356,10 @@ async function importCmsJson(event) {
     assignments: imported.assignments || {},
     details: imported.details || {},
     completed: imported.completed || {},
+    customModules: imported.customModules || [],
   };
 
+  applyCustomModules();
   applySavedAssignments();
   renderSiteTabs();
   renderSiteProfile(sites[0].id);
@@ -2361,12 +2385,35 @@ function getTagClass(moduleName) {
   return "";
 }
 
-function renderModuleGroups() {
+function renderModuleGroups(selectedGroupTitle = "", selectedItemLabel = "") {
   const container = document.querySelector("#moduleGroups");
-  const firstGroup = moduleGroups[0];
-  const firstItem = firstGroup.items[0];
+  const activeGroup = moduleGroups.find((group) => group.title === selectedGroupTitle) || moduleGroups[0];
+  const activeItem = activeGroup.items.includes(selectedItemLabel) ? selectedItemLabel : activeGroup.items[0];
 
-  container.innerHTML = moduleGroups
+  container.innerHTML = `
+    <div class="module-card module-create-card">
+      <h3>Нов модул</h3>
+      <div class="module-create-form">
+        <label>
+          <span>Име на модул</span>
+          <input id="newModuleName" type="text" placeholder="Напр. Неуспешни плащания" />
+        </label>
+        <label>
+          <span>Група</span>
+          <select id="newModuleGroup">
+            ${moduleGroups.map((group) => `<option value="${escapeAttr(group.title)}">${group.title}</option>`).join("")}
+            <option value="__custom">Друга група</option>
+          </select>
+        </label>
+        <label class="custom-group-field" hidden>
+          <span>Име на нова група</span>
+          <input id="newModuleCustomGroup" type="text" placeholder="Напр. Интеграции" />
+        </label>
+        <button class="primary-button" id="createModuleBtn" type="button">Създай модул</button>
+        <span class="save-status" id="createModuleStatus"></span>
+      </div>
+    </div>
+    ${moduleGroups
     .map((group) => {
       return `
         <div class="module-card">
@@ -2374,7 +2421,7 @@ function renderModuleGroups() {
           <ul class="module-picker-list">
             ${group.items
               .map((item) => {
-                const active = group.title === firstGroup.title && item === firstItem ? " active" : "";
+                const active = group.title === activeGroup.title && item === activeItem ? " active" : "";
                 return `
                   <li>
                     <button class="module-picker${active}" data-group="${escapeAttr(group.title)}" data-item="${escapeAttr(item)}" type="button">${item}</button>
@@ -2386,9 +2433,11 @@ function renderModuleGroups() {
         </div>
       `;
     })
-    .join("");
+    .join("")}
+  `;
 
-  renderModuleAssignment(firstGroup.title, firstItem);
+  bindCreateModuleForm(container);
+  renderModuleAssignment(activeGroup.title, activeItem);
 
   container.querySelectorAll(".module-picker").forEach((button) => {
     button.addEventListener("click", () => {
@@ -2396,6 +2445,47 @@ function renderModuleGroups() {
       button.classList.add("active");
       renderModuleAssignment(button.dataset.group, button.dataset.item);
     });
+  });
+}
+
+function bindCreateModuleForm(container) {
+  const groupSelect = container.querySelector("#newModuleGroup");
+  const customGroupField = container.querySelector(".custom-group-field");
+  const customGroupInput = container.querySelector("#newModuleCustomGroup");
+  const nameInput = container.querySelector("#newModuleName");
+  const status = container.querySelector("#createModuleStatus");
+
+  groupSelect.addEventListener("change", () => {
+    const custom = groupSelect.value === "__custom";
+    customGroupField.hidden = !custom;
+    if (custom) customGroupInput.focus();
+  });
+
+  container.querySelector("#createModuleBtn").addEventListener("click", async () => {
+    const itemLabel = nameInput.value.trim();
+    const groupTitle = groupSelect.value === "__custom" ? customGroupInput.value.trim() : groupSelect.value;
+    const existingGroup = moduleGroups.find((group) => group.title === groupTitle);
+    const type = existingGroup?.type || "common";
+
+    if (!itemLabel || !groupTitle) {
+      status.textContent = "Попълни име и група";
+      status.classList.add("error");
+      return;
+    }
+
+    const duplicate = moduleGroups.some((group) => group.title === groupTitle && group.items.includes(itemLabel));
+    if (duplicate) {
+      status.textContent = "Този модул вече съществува";
+      status.classList.add("error");
+      return;
+    }
+
+    cmsState.customModules = cmsState.customModules || [];
+    cmsState.customModules.push({ groupTitle, itemLabel, type });
+    applyCustomModules();
+    const saved = await saveCmsState();
+    renderModuleGroups(groupTitle, itemLabel);
+    document.querySelector("#moduleAssignmentStatus").textContent = saved ? "Записано" : "Не е записано";
   });
 }
 

@@ -819,6 +819,40 @@ body.file-mode .file-warning {
   margin-bottom: 12px;
 }
 
+.module-create-card {
+  grid-column: 1 / -1;
+}
+
+.module-create-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 0.8fr) minmax(180px, 0.8fr) auto minmax(90px, auto);
+  gap: 10px;
+  align-items: end;
+}
+
+.module-create-form label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.module-create-form input,
+.module-create-form select {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--text);
+  background: #fff;
+}
+
+.module-create-form .save-status.error {
+  color: #b42318;
+}
+
 .module-tag.common {
   color: #124c85;
   background: #dcebff;

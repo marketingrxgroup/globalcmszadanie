@@ -19,6 +19,7 @@ function default_state(): array
         'assignments' => new stdClass(),
         'details' => new stdClass(),
         'completed' => new stdClass(),
+        'customModules' => [],
     ];
 }
 
@@ -41,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         'assignments' => $decoded['assignments'] ?? new stdClass(),
         'details' => $decoded['details'] ?? new stdClass(),
         'completed' => $decoded['completed'] ?? new stdClass(),
+        'customModules' => $decoded['customModules'] ?? [],
     ]);
 }
 
@@ -59,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'assignments' => $decoded['assignments'] ?? new stdClass(),
         'details' => $decoded['details'] ?? new stdClass(),
         'completed' => $decoded['completed'] ?? new stdClass(),
+        'customModules' => $decoded['customModules'] ?? [],
     ];
 
     $written = file_put_contents($stateFile, json_encode($state, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
