@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 $stateFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'cms-state.json';
+$webhookLogFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'cms-webhook.log';
 $n8nWebhookUrl = getenv('N8N_WEBHOOK_URL') ?: 'https://n8n.milaski.xyz/webhook/cms-events';
 $n8nWebhookSecret = getenv('N8N_WEBHOOK_SECRET') ?: '';
 $siteNames = [
@@ -407,10 +408,13 @@ function enrich_client_cms_event(array $clientEvent, array $previousState, array
 
 function notify_n8n(array $event, string $webhookUrl, string $webhookSecret): void
 {
+    global $webhookLogFile;
+
     if ($webhookUrl === '') {
         return;
     }
 
+    $body = json_encode($event, JSON_UNESCAPED_UNICODE);
     $headers = [
         'Content-Type: application/json',
     ];
@@ -418,17 +422,60 @@ function notify_n8n(array $event, string $webhookUrl, string $webhookSecret): vo
         $headers[] = 'X-CMS-Webhook-Secret: ' . $webhookSecret;
     }
 
+    if (function_exists('curl_init')) {
+        $ch = curl_init($webhookUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 8,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+        ]);
+
+        $responseBody = curl_exec($ch);
+        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        log_webhook_result($webhookLogFile, $webhookUrl, $statusCode, $error, is_string($responseBody) ? $responseBody : '');
+        return;
+    }
+
     $context = stream_context_create([
         'http' => [
             'method' => 'POST',
             'header' => implode("\r\n", $headers),
-            'content' => json_encode($event, JSON_UNESCAPED_UNICODE),
-            'timeout' => 2.5,
+            'content' => $body,
+            'timeout' => 8,
             'ignore_errors' => true,
         ],
     ]);
 
-    @file_get_contents($webhookUrl, false, $context);
+    $responseBody = @file_get_contents($webhookUrl, false, $context);
+    $statusCode = 0;
+    if (isset($http_response_header[0]) && preg_match('/\s(\d{3})\s/', $http_response_header[0], $matches)) {
+        $statusCode = (int) $matches[1];
+    }
+
+    log_webhook_result($webhookLogFile, $webhookUrl, $statusCode, '', is_string($responseBody) ? $responseBody : '');
+}
+
+function log_webhook_result(string $logFile, string $webhookUrl, int $statusCode, string $error, string $responseBody): void
+{
+    $line = sprintf(
+        "[%s] url=%s status=%s error=%s response=%s\n",
+        gmdate('c'),
+        $webhookUrl,
+        $statusCode ?: 'none',
+        $error !== '' ? $error : '-',
+        mb_substr(str_replace(["\r", "\n"], ' ', $responseBody), 0, 300)
+    );
+
+    @file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
