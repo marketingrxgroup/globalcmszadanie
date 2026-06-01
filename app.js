@@ -636,6 +636,7 @@ let cmsState = {
 
 let collapsedTreeGroups = {};
 const autosaveTimers = new Map();
+const QUESTION_ANSWER_AUTOSAVE_MS = 60000;
 const defaultModuleLayout = cloneModuleLayout(moduleGroups);
 const EDITOR_NAME_STORAGE_KEY = "cms_editor_name";
 const EDITOR_NAME_COOKIE = "cms_editor_name";
@@ -3331,7 +3332,7 @@ function renderMvpAndQuestions() {
         timerKey,
         window.setTimeout(() => {
           saveQuestionAnswer(textarea.dataset.question, textarea.dataset.questionLabel, "autosave");
-        }, 1200)
+        }, QUESTION_ANSWER_AUTOSAVE_MS)
       );
     });
   });
