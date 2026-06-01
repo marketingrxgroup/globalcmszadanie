@@ -748,6 +748,12 @@ body.file-mode .file-warning {
   list-style: none;
 }
 
+.module-picker-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 6px;
+}
+
 .module-picker {
   width: 100%;
   min-height: 34px;
@@ -758,6 +764,23 @@ body.file-mode .file-warning {
   color: #314151;
   background: #fff;
   cursor: pointer;
+}
+
+.module-delete {
+  min-height: 34px;
+  border: 1px solid #f3b5b5;
+  border-radius: 6px;
+  color: #a32929;
+  background: #fff5f5;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.module-delete:hover {
+  border-color: #d84b4b;
+  background: #ffe4e4;
 }
 
 .module-picker.dragging {

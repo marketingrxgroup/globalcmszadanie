@@ -2455,8 +2455,9 @@ function renderModuleGroups(selectedGroupTitle = "", selectedItemLabel = "") {
               .map((item) => {
                 const active = group.title === activeGroup.title && item === activeItem ? " active" : "";
                 return `
-                  <li>
+                  <li class="module-picker-row">
                     <button class="module-picker${active}" data-group="${escapeAttr(group.title)}" data-item="${escapeAttr(item)}" type="button" draggable="true" title="Drag за преместване, double click за преименуване">${item}</button>
+                    <button class="module-delete" data-group="${escapeAttr(group.title)}" data-item="${escapeAttr(item)}" type="button" title="Изтрий модул">×</button>
                   </li>
                 `;
               })
@@ -2470,6 +2471,7 @@ function renderModuleGroups(selectedGroupTitle = "", selectedItemLabel = "") {
 
   bindCreateModuleForm(container);
   bindModuleDragAndRename(container);
+  bindModuleDelete(container);
   renderModuleAssignment(activeGroup.title, activeItem);
 
   container.querySelectorAll(".module-picker").forEach((button) => {
@@ -2477,6 +2479,19 @@ function renderModuleGroups(selectedGroupTitle = "", selectedItemLabel = "") {
       container.querySelectorAll(".module-picker").forEach((item) => item.classList.remove("active"));
       button.classList.add("active");
       renderModuleAssignment(button.dataset.group, button.dataset.item);
+    });
+  });
+}
+
+function bindModuleDelete(container) {
+  container.querySelectorAll(".module-delete").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      const groupTitle = button.dataset.group;
+      const itemLabel = button.dataset.item;
+      const confirmed = window.confirm(`Да изтрия ли модул "${itemLabel}" от "${groupTitle}"? Assignment-ите ще се махнат, описанията ще останат като резерв.`);
+      if (!confirmed) return;
+      await deleteModule(groupTitle, itemLabel);
     });
   });
 }
@@ -2637,6 +2652,26 @@ function removeSiteMenuItem(site, groupTitle, itemLabel) {
   const group = site.menuTree.find((entry) => entry.title === groupTitle);
   if (!group) return;
   group.children = group.children.filter((child) => getChildLabel(child) !== itemLabel);
+}
+
+async function deleteModule(groupTitle, itemLabel) {
+  const group = moduleGroups.find((entry) => entry.title === groupTitle);
+  if (!group) return;
+
+  group.items = group.items.filter((item) => item !== itemLabel);
+  cmsState.customModules = (cmsState.customModules || []).filter((item) => {
+    return !(item.groupTitle === groupTitle && item.itemLabel === itemLabel);
+  });
+
+  delete cmsState.assignments[makeAssignmentKey(groupTitle, itemLabel)];
+  sites.forEach((site) => removeSiteMenuItem(site, groupTitle, itemLabel));
+  persistModuleLayout();
+  renderModuleGroups();
+  renderSiteTabs();
+  renderSiteProfile(sites[0].id);
+  const saved = await saveCmsState();
+  const status = document.querySelector("#moduleAssignmentStatus");
+  if (status) status.textContent = saved ? "Записано" : "Не е записано";
 }
 
 function renderModuleAssignment(groupTitle, itemLabel) {
