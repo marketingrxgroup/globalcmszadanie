@@ -2491,7 +2491,7 @@ function renderModuleGroups(selectedGroupTitle = "", selectedItemLabel = "") {
               .map((item) => {
                 const active = group.title === activeGroup.title && item === activeItem ? " active" : "";
                 return `
-                  <li class="module-picker-row">
+                  <li class="module-picker-row" data-group="${escapeAttr(group.title)}" data-item="${escapeAttr(item)}">
                     <button class="module-picker${active}" data-group="${escapeAttr(group.title)}" data-item="${escapeAttr(item)}" type="button" draggable="true" title="Drag за преместване, double click за преименуване">${item}</button>
                     <button class="module-delete" data-group="${escapeAttr(group.title)}" data-item="${escapeAttr(item)}" type="button" title="Изтрий модул">×</button>
                   </li>
@@ -2679,6 +2679,27 @@ function bindModuleDragAndRename(container) {
     });
   });
 
+  container.querySelectorAll(".module-picker-row").forEach((row) => {
+    row.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      row.classList.add("drag-over-row");
+      event.dataTransfer.dropEffect = "move";
+    });
+
+    row.addEventListener("dragleave", () => {
+      row.classList.remove("drag-over-row");
+    });
+
+    row.addEventListener("drop", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      row.classList.remove("drag-over-row");
+      const payload = JSON.parse(event.dataTransfer.getData("application/json") || "{}");
+      if (!payload.groupTitle || !payload.itemLabel) return;
+      await moveModule(payload.groupTitle, payload.itemLabel, row.dataset.group, row.dataset.item);
+    });
+  });
+
   container.querySelectorAll(".module-dropzone").forEach((zone) => {
     zone.addEventListener("dragover", (event) => {
       event.preventDefault();
@@ -2701,13 +2722,21 @@ function bindModuleDragAndRename(container) {
   });
 }
 
-async function moveModule(oldGroupTitle, itemLabel, newGroupTitle) {
+async function moveModule(oldGroupTitle, itemLabel, newGroupTitle, beforeItemLabel = "") {
   const oldGroup = moduleGroups.find((group) => group.title === oldGroupTitle);
   const newGroup = moduleGroups.find((group) => group.title === newGroupTitle);
   if (!oldGroup || !newGroup) return;
+  if (oldGroupTitle === newGroupTitle && itemLabel === beforeItemLabel) return;
 
   oldGroup.items = oldGroup.items.filter((item) => item !== itemLabel);
-  if (!newGroup.items.includes(itemLabel)) newGroup.items.push(itemLabel);
+  if (!newGroup.items.includes(itemLabel)) {
+    const insertIndex = beforeItemLabel ? newGroup.items.indexOf(beforeItemLabel) : -1;
+    if (insertIndex >= 0) {
+      newGroup.items.splice(insertIndex, 0, itemLabel);
+    } else {
+      newGroup.items.push(itemLabel);
+    }
+  }
 
   migrateModuleReferences(oldGroupTitle, itemLabel, newGroupTitle, itemLabel);
   persistModuleLayout();

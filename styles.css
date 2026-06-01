@@ -753,6 +753,13 @@ body.file-mode .file-warning {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 34px;
   gap: 6px;
+  border-radius: 7px;
+}
+
+.module-picker-row.drag-over-row {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  background: #eef6ff;
 }
 
 .module-picker {
