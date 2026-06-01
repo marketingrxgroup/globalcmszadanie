@@ -466,22 +466,22 @@ const moduleGroups = [
   {
     title: "Каталог",
     type: "catalog",
-    items: ["Продукти", "Продукти / машини", "Категории", "Марки", "Филтри", "Характеристики", "Икони", "Свойства", "Разопаковани етикети", "Доставчици", "Марки - отстъпки", "Импорт / експорт"],
+    items: ["Продукти", "Продукти / машини", "Категории", "Марки", "Филтри", "Характеристики", "Икони", "Свойства", "Разопаковани етикети", "Доставчици", "Марки - отстъпки", "Импорт / експорт", "Видеа", "Сравнение на цени"],
   },
   {
     title: "Магазин",
     type: "shop",
-    items: ["Поръчки", "Бекофис", "Клиенти / потребители", "Потребители", "Колички / Изоставени колички", "Товарителници / Еконт товарителници", "Рекламации", "Гаранционни карти", "Изпратени имейли", "Абониране цена", "Промо кодове", "Плащания / доставки", "Неуспешни плащания"],
+    items: ["Поръчки", "Бекофис", "Клиенти / потребители", "Потребители", "Колички / Изоставени колички", "Товарителници / Еконт товарителници", "Рекламации", "Гаранционни карти", "Изпратени имейли", "Абониране цена", "Плащания / доставки", "Неуспешни плащания", "Статуси на поръчки", "Поръчки - само CRM процес"],
   },
   {
     title: "Запитвания",
     type: "catalog",
-    items: ["Общи запитвания", "Запитвания към продукт", "Запитвания към услуга", "Контактни форми", "Източник на запитване", "История"],
+    items: ["Общи запитвания", "Запитвания за наем/услуги", "Запитвания към продукт", "Запитвания към услуга", "Предложени цени", "Контактни форми", "Източник на запитване", "История"],
   },
   {
     title: "Услуги / Сервиз",
     type: "special",
-    items: ["Списък услуги", "Дейност", "Детайлна страница на услуга", "Запитвания към услуга"],
+    items: ["Списък услуги", "Дейност", "Детайлна страница на услуга", "Запитвания към услуга", "Услуги"],
   },
   {
     title: "Търгове",
@@ -496,22 +496,22 @@ const moduleGroups = [
   {
     title: "Rental",
     type: "special",
-    items: ["Резервации", "Календар за заетост", "Складове", "Наличности по градове", "Тарифи", "Депозити", "Документи", "Barcode / Beacon / GPS"],
+    items: ["Резервации", "Календар за заетост", "Складове", "Наличности по градове", "Тарифи", "Депозити", "Документи", "Barcode / Beacon / GPS", "Сервизиране"],
   },
   {
     title: "Съдържание",
     type: "common",
-    items: ["Страници", "Статични стр", "Новини", "Блог / Новини", "Категории блог", "Homepage", "Каталог страница", "Хедър / лога", "Футър", "Менюта", "Медия / файлове"],
+    items: ["Страници", "Статични стр", "Новини", "Блог / Новини", "Категории блог", "Homepage", "Каталог страница", "Хедър / лога", "Футър", "Менюта", "Медия / файлове", "Отзиви", "Галерия"],
   },
   {
     title: "Landing страници",
     type: "special",
-    items: ["Оферти като landing страници", "Продуктови фунии", "Промо страници", "UTM / кампании", "Форми за запитване"],
+    items: ["Оферти като landing страници", "Продуктови фунии", "Landing страници", "Промо страници", "UTM / кампании", "Форми за запитване"],
   },
   {
     title: "Маркетинг",
     type: "common",
-    items: ["Банери", "Слайдери", "SEO", "Редиректи", "Мейлинг", "Коментари", "Тракинг кодове"],
+    items: ["Банери", "Слайдери", "SEO", "Редиректи", "Мейлинг", "Коментари", "Коментари наем/услуги", "Промо кодове", "Тракинг кодове"],
   },
   {
     title: "Анализи / Отчети",
@@ -524,6 +524,61 @@ const moduleGroups = [
     items: ["Текстове", "Преводи", "Контакти", "Имейл шаблони", "Права и роли", "Потребители", "История на промени", "Логове"],
   },
 ];
+
+const canonicalGroupAliases = {
+  "Rental / Наем": "Rental",
+  "Настройки сайт": "Съдържание",
+  "Настройки админ": "Настройки",
+  "Настройки на сайта": "Съдържание",
+  "Системни": "Настройки",
+  "Продажби": "Запитвания",
+};
+
+const moduleItemGroupOverrides = {
+  "Настройки сайт||Оферти": "Landing страници",
+  "Продажби||Landing страници / продуктови фунии": "Landing страници",
+  "Продажби||Сравнение на цени": "Каталог",
+  "Настройки||Езици": "Сайт",
+  "Настройки на сайта||SEO настройки": "Маркетинг",
+  "Настройки сайт||SEO настройки": "Маркетинг",
+  "Магазин||Запитвания": "Запитвания",
+  "Магазин||Запитвания за наем/услуги": "Запитвания",
+  "Магазин||Категории": "Каталог",
+  "Магазин||Марки": "Каталог",
+  "Магазин||Продукти": "Каталог",
+  "Магазин||Свойства": "Каталог",
+  "Магазин||Feedbacks": "Анализи / Отчети",
+  "Магазин||Статистика": "Анализи / Отчети",
+  "Магазин||Анализи": "Анализи / Отчети",
+  "Магазин||Предложени цени": "Запитвания",
+  "Каталог||Търгове": "Търгове",
+  "Каталог||Новини": "Съдържание",
+  "Съдържание||Банери": "Маркетинг",
+  "Съдържание||SEO": "Маркетинг",
+  "Съдържание||Ладинг стр": "Landing страници",
+  "Съдържание||Ландинг страници": "Landing страници",
+  "Съдържание||Услуги": "Услуги / Сервиз",
+};
+
+const moduleItemLabelAliases = {
+  "Начална страница": "Homepage",
+  "Хедър": "Хедър / лога",
+  "Хедър (лога)": "Хедър / лога",
+  "SEO настройки": "SEO",
+  "Абониране Цена": "Абониране цена",
+  "Товарителници": "Товарителници / Еконт товарителници",
+  "Еконт товарителници": "Товарителници / Еконт товарителници",
+  "Изоставени колички": "Колички / Изоставени колички",
+  "Клиенти": "Клиенти / потребители",
+  "Оферти": "Оферти като landing страници",
+  "Landing страници / продуктови фунии": "Продуктови фунии",
+  "Роли": "Права и роли",
+  "Права": "Права и роли",
+  "История на запитвания": "История",
+  "Запитвания": "Общи запитвания",
+  "Ладинг стр": "Landing страници",
+  "Ландинг страници": "Landing страници",
+};
 
 const typeLabels = {
   common: "Общ",
@@ -2247,17 +2302,84 @@ function applyCustomModules() {
   });
 }
 
+function resolveCanonicalGroup(siteGroupTitle, itemLabel = "") {
+  const overrideKey = `${siteGroupTitle}||${itemLabel}`;
+  if (moduleItemGroupOverrides[overrideKey]) {
+    return moduleItemGroupOverrides[overrideKey];
+  }
+  return canonicalGroupAliases[siteGroupTitle] || siteGroupTitle;
+}
+
+function normalizeModuleItemLabel(label, siteGroupTitle = "") {
+  if (siteGroupTitle === "Настройки сайт" && label === "Каталог") {
+    return "Каталог страница";
+  }
+  return moduleItemLabelAliases[label] || label;
+}
+
+function ensureModuleGroup(title) {
+  let group = moduleGroups.find((entry) => entry.title === title);
+  if (group) return group;
+
+  const baseGroup = defaultModuleLayout.find((entry) => entry.title === title);
+  if (!baseGroup) return null;
+
+  group = { title: baseGroup.title, type: baseGroup.type, items: [...baseGroup.items] };
+  moduleGroups.push(group);
+  return group;
+}
+
+function addModuleItem(groupTitle, itemLabel) {
+  if (!groupTitle || !itemLabel) return;
+  const group = ensureModuleGroup(groupTitle);
+  if (!group) return;
+  if (!group.items.includes(itemLabel)) {
+    group.items.push(itemLabel);
+  }
+}
+
+function dedupeModuleGroups() {
+  const groupsToRemove = [];
+
+  moduleGroups.forEach((group, index) => {
+    const canonicalTitle = resolveCanonicalGroup(group.title);
+    if (canonicalTitle === group.title) return;
+
+    group.items.forEach((item) => {
+      const normalizedLabel = normalizeModuleItemLabel(item, group.title);
+      const targetTitle = resolveCanonicalGroup(group.title, item);
+      addModuleItem(targetTitle, normalizedLabel);
+    });
+    groupsToRemove.push(index);
+  });
+
+  [...new Set(groupsToRemove)].sort((a, b) => b - a).forEach((index) => {
+    moduleGroups.splice(index, 1);
+  });
+
+  moduleGroups.forEach((group) => {
+    group.items = [...new Set(group.items.filter(Boolean))];
+  });
+}
+
 function applyModuleStructureFromState() {
   applyDeletedModulesToSites();
 
   if (Array.isArray(cmsState.moduleLayout) && cmsState.moduleLayout.length) {
     moduleGroups.splice(0, moduleGroups.length, ...cloneModuleLayout(cmsState.moduleLayout));
-    syncSiteModulesToModuleGroups();
-    return;
+  } else {
+    applyCustomModules();
   }
 
-  applyCustomModules();
+  const before = JSON.stringify(moduleGroups);
+  dedupeModuleGroups();
   syncSiteModulesToModuleGroups();
+  migrateAssignmentKeysOnLoad();
+  const changed = before !== JSON.stringify(moduleGroups);
+  if (changed) {
+    persistModuleLayout();
+  }
+  return changed;
 }
 
 function cloneModuleLayout(layout) {
@@ -2294,20 +2416,66 @@ function syncSiteModulesToModuleGroups() {
 
   sites.forEach((site) => {
     site.menuTree.forEach((siteGroup) => {
-      let group = moduleGroups.find((entry) => entry.title === siteGroup.title);
-      if (!group) {
-        group = { title: siteGroup.title, type: siteGroup.type || "common", items: [] };
-        moduleGroups.push(group);
-      }
-
       siteGroup.children.forEach((child) => {
         const label = getChildLabel(child);
+        if (!label) return;
         if (deleted.has(makeModuleKey(siteGroup.title, label))) return;
-        if (label && !group.items.includes(label)) {
-          group.items.push(label);
-        }
+
+        const canonicalGroupTitle = resolveCanonicalGroup(siteGroup.title, label);
+        const normalizedLabel = normalizeModuleItemLabel(label, siteGroup.title);
+        addModuleItem(canonicalGroupTitle, normalizedLabel);
       });
     });
+  });
+
+  dedupeModuleGroups();
+}
+
+function migrateAssignmentKeysOnLoad() {
+  const merged = {};
+
+  Object.entries(cmsState.assignments || {}).forEach(([key, siteIds]) => {
+    const [groupTitle, itemLabel] = key.split("||");
+    if (!groupTitle || !itemLabel) return;
+
+    const canonicalGroup = resolveCanonicalGroup(groupTitle, itemLabel);
+    const normalizedLabel = normalizeModuleItemLabel(itemLabel, groupTitle);
+    const nextKey = makeAssignmentKey(canonicalGroup, normalizedLabel);
+
+    if (!merged[nextKey]) merged[nextKey] = new Set();
+    siteIds.forEach((siteId) => merged[nextKey].add(siteId));
+  });
+
+  cmsState.assignments = Object.fromEntries(
+    Object.entries(merged).map(([key, siteIds]) => [key, [...siteIds]])
+  );
+}
+
+function findSiteGroupForAssignment(site, groupTitle, itemLabel) {
+  const exactGroup = site.menuTree.find((entry) => entry.title === groupTitle);
+  if (exactGroup) return exactGroup;
+
+  return (
+    site.menuTree.find((entry) => {
+      if (resolveCanonicalGroup(entry.title) !== groupTitle) return false;
+      return entry.children.some((child) => {
+        const childLabel = getChildLabel(child);
+        return childLabel === itemLabel || normalizeModuleItemLabel(childLabel, entry.title) === itemLabel;
+      });
+    }) ||
+    site.menuTree.find((entry) => resolveCanonicalGroup(entry.title, itemLabel) === groupTitle) ||
+    site.menuTree.find((entry) => resolveCanonicalGroup(entry.title) === groupTitle) ||
+    null
+  );
+}
+
+function siteHasAssignedModule(site, groupTitle, itemLabel) {
+  const group = findSiteGroupForAssignment(site, groupTitle, itemLabel);
+  if (!group) return false;
+
+  return group.children.some((child) => {
+    const childLabel = getChildLabel(child);
+    return childLabel === itemLabel || normalizeModuleItemLabel(childLabel, group.title) === itemLabel;
   });
 }
 
@@ -2318,11 +2486,14 @@ function applySavedAssignments() {
 
     sites.forEach((site) => {
       const shouldHave = siteIds.includes(site.id);
-      const group = site.menuTree.find((entry) => entry.title === groupTitle);
+      const group = findSiteGroupForAssignment(site, groupTitle, itemLabel);
 
       if (shouldHave) {
         if (group) {
-          const exists = group.children.some((child) => getChildLabel(child) === itemLabel);
+          const exists = group.children.some((child) => {
+            const childLabel = getChildLabel(child);
+            return childLabel === itemLabel || normalizeModuleItemLabel(childLabel, group.title) === itemLabel;
+          });
           if (!exists) group.children.push(suggested(itemLabel));
         } else {
           const moduleGroup = moduleGroups.find((entry) => entry.title === groupTitle);
@@ -2333,7 +2504,8 @@ function applySavedAssignments() {
 
       if (group) {
         group.children = group.children.filter((child) => {
-          const isSame = getChildLabel(child) === itemLabel;
+          const childLabel = getChildLabel(child);
+          const isSame = childLabel === itemLabel || normalizeModuleItemLabel(childLabel, group.title) === itemLabel;
           return !isSame;
         });
       }
@@ -2403,8 +2575,7 @@ function renderEditorSites() {
 }
 
 function siteHasMenuItem(site, groupTitle, itemLabel) {
-  const group = site.menuTree.find((entry) => entry.title === groupTitle);
-  return Boolean(group?.children.some((child) => getChildLabel(child) === itemLabel));
+  return siteHasAssignedModule(site, groupTitle, itemLabel);
 }
 
 function loadEditorDetail() {
@@ -2815,7 +2986,9 @@ async function moveModule(oldGroupTitle, itemLabel, newGroupTitle, beforeItemLab
     }
   }
 
-  migrateModuleReferences(oldGroupTitle, itemLabel, newGroupTitle, itemLabel);
+  if (oldGroupTitle !== newGroupTitle) {
+    migrateModuleReferences(oldGroupTitle, itemLabel, newGroupTitle, itemLabel);
+  }
   persistModuleLayout();
   applySavedAssignments();
   renderModuleGroups(newGroupTitle, itemLabel);
