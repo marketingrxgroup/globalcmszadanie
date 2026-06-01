@@ -3000,6 +3000,7 @@ async function moveModule(oldGroupTitle, itemLabel, newGroupTitle, beforeItemLab
     migrateModuleReferences(oldGroupTitle, itemLabel, newGroupTitle, itemLabel);
   }
   persistModuleLayout();
+  syncModuleOrderToSites(oldGroupTitle, newGroupTitle);
   applySavedAssignments();
   renderModuleGroups(newGroupTitle, itemLabel);
   renderSiteTabs();
@@ -3029,8 +3030,12 @@ function migrateModuleReferences(oldGroupTitle, oldItemLabel, newGroupTitle, new
   const assignedSiteIds = new Set(cmsState.assignments[oldAssignmentKey] || []);
 
   sites.forEach((site) => {
-    if (siteHasMenuItem(site, oldGroupTitle, oldItemLabel)) assignedSiteIds.add(site.id);
-    removeSiteMenuItem(site, oldGroupTitle, oldItemLabel);
+    if (siteHasAssignedModule(site, oldGroupTitle, oldItemLabel)) assignedSiteIds.add(site.id);
+    if (oldGroupTitle === newGroupTitle) {
+      renameSiteMenuItem(site, oldGroupTitle, oldItemLabel, newItemLabel);
+    } else {
+      moveSiteMenuItemBetweenGroups(site, oldGroupTitle, newGroupTitle, oldItemLabel, newItemLabel);
+    }
   });
 
   if (cmsState.assignments[newAssignmentKey]) {
@@ -3043,20 +3048,124 @@ function migrateModuleReferences(oldGroupTitle, oldItemLabel, newGroupTitle, new
   migrateStateKeyMap(cmsState.completed, oldGroupTitle, oldItemLabel, newGroupTitle, newItemLabel);
 }
 
+function siteMenuItemMatchesModule(siteGroupTitle, child, moduleGroupTitle, moduleItemLabel) {
+  const label = getChildLabel(child);
+  const itemMatches = label === moduleItemLabel || normalizeModuleItemLabel(label, siteGroupTitle) === moduleItemLabel;
+  if (!itemMatches) return false;
+
+  return (
+    siteGroupTitle === moduleGroupTitle ||
+    resolveCanonicalGroup(siteGroupTitle, label) === moduleGroupTitle ||
+    resolveCanonicalGroup(siteGroupTitle) === moduleGroupTitle
+  );
+}
+
+function renameSiteMenuItem(site, moduleGroupTitle, oldItemLabel, newItemLabel) {
+  site.menuTree.forEach((group) => {
+    group.children = group.children.map((child) => {
+      if (!siteMenuItemMatchesModule(group.title, child, moduleGroupTitle, oldItemLabel)) return child;
+      if (typeof child === "string") return newItemLabel;
+      return { ...child, label: newItemLabel };
+    });
+  });
+}
+
+function getModuleItemOrder(moduleGroup, siteLabel, siteGroupTitle) {
+  const normalized = normalizeModuleItemLabel(siteLabel, siteGroupTitle);
+  let index = moduleGroup.items.indexOf(normalized);
+  if (index >= 0) return index;
+  index = moduleGroup.items.indexOf(siteLabel);
+  return index >= 0 ? index : 9999;
+}
+
+function reorderSiteGroupChildrenByModuleGroup(siteGroup, moduleGroupTitle) {
+  const moduleGroup = moduleGroups.find((group) => group.title === moduleGroupTitle);
+  if (!moduleGroup) return;
+
+  const matchedIndices = [];
+  siteGroup.children.forEach((child, index) => {
+    if (resolveCanonicalGroup(siteGroup.title, getChildLabel(child)) === moduleGroupTitle) {
+      matchedIndices.push(index);
+    }
+  });
+
+  if (matchedIndices.length < 2) return;
+
+  const matchedChildren = matchedIndices.map((index) => siteGroup.children[index]);
+  matchedChildren.sort((a, b) => {
+    return (
+      getModuleItemOrder(moduleGroup, getChildLabel(a), siteGroup.title) -
+      getModuleItemOrder(moduleGroup, getChildLabel(b), siteGroup.title)
+    );
+  });
+
+  matchedIndices.forEach((originalIndex, sortedIndex) => {
+    siteGroup.children[originalIndex] = matchedChildren[sortedIndex];
+  });
+}
+
+function syncModuleOrderToSites(...moduleGroupTitles) {
+  const titles = moduleGroupTitles.length ? moduleGroupTitles : moduleGroups.map((group) => group.title);
+
+  sites.forEach((site) => {
+    site.menuTree.forEach((siteGroup) => {
+      titles.forEach((moduleGroupTitle) => {
+        reorderSiteGroupChildrenByModuleGroup(siteGroup, moduleGroupTitle);
+      });
+    });
+  });
+}
+
+function moveSiteMenuItemBetweenGroups(site, oldModuleGroupTitle, newModuleGroupTitle, moduleItemLabel, newItemLabel = moduleItemLabel) {
+  let movedChild = null;
+
+  site.menuTree.forEach((group) => {
+    group.children = group.children.filter((child) => {
+      if (!siteMenuItemMatchesModule(group.title, child, oldModuleGroupTitle, moduleItemLabel)) return true;
+      movedChild = typeof child === "string" ? newItemLabel : { ...child, label: newItemLabel };
+      return false;
+    });
+  });
+
+  if (!movedChild) return;
+
+  let targetGroup = findSiteGroupForAssignment(site, newModuleGroupTitle, newItemLabel);
+  if (!targetGroup) {
+    const moduleGroup = moduleGroups.find((group) => group.title === newModuleGroupTitle);
+    targetGroup = { title: newModuleGroupTitle, type: moduleGroup?.type || "common", children: [] };
+    site.menuTree.push(targetGroup);
+  }
+
+  targetGroup.children.push(movedChild);
+  reorderSiteGroupChildrenByModuleGroup(targetGroup, newModuleGroupTitle);
+}
+
 function migrateStateKeyMap(map, oldGroupTitle, oldItemLabel, newGroupTitle, newItemLabel) {
   Object.keys(map || {}).forEach((key) => {
     const [siteId, groupTitle, itemLabel] = key.split("||");
-    if (groupTitle !== oldGroupTitle || itemLabel !== oldItemLabel) return;
-    const nextKey = makeStateKey(siteId, newGroupTitle, newItemLabel);
+    const itemMatches = itemLabel === oldItemLabel || normalizeModuleItemLabel(itemLabel, groupTitle) === oldItemLabel;
+    if (!itemMatches) return;
+
+    const groupMatches =
+      groupTitle === oldGroupTitle ||
+      resolveCanonicalGroup(groupTitle, itemLabel) === oldGroupTitle ||
+      resolveCanonicalGroup(groupTitle) === oldGroupTitle;
+    if (!groupMatches) return;
+
+    const nextGroupTitle = oldGroupTitle === newGroupTitle ? groupTitle : newGroupTitle;
+    const nextKey = makeStateKey(siteId, nextGroupTitle, newItemLabel);
+    if (nextKey === key) return;
     map[nextKey] = map[key];
     delete map[key];
   });
 }
 
 function removeSiteMenuItem(site, groupTitle, itemLabel) {
-  const group = site.menuTree.find((entry) => entry.title === groupTitle);
+  const group = findSiteGroupForAssignment(site, groupTitle, itemLabel);
   if (!group) return;
-  group.children = group.children.filter((child) => getChildLabel(child) !== itemLabel);
+  group.children = group.children.filter((child) => {
+    return !siteMenuItemMatchesModule(group.title, child, groupTitle, itemLabel);
+  });
 }
 
 async function deleteModule(groupTitle, itemLabel) {
@@ -3143,6 +3252,7 @@ document.querySelector("#exportExcelBtn").addEventListener("click", exportSitesE
 async function initApp() {
   await loadCmsState();
   applySavedAssignments();
+  syncModuleOrderToSites();
   renderSiteTabs();
   renderSiteProfile(sites[0].id);
   renderModuleGroups();
