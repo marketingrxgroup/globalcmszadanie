@@ -471,7 +471,7 @@ const moduleGroups = [
   {
     title: "Магазин",
     type: "shop",
-    items: ["Поръчки", "Бекофис", "Клиенти / потребители", "Потребители", "Колички / Изоставени колички", "Товарителници / Еконт товарителници", "Рекламации", "Гаранционни карти", "Изпратени имейли", "Абониране цена", "Плащания / доставки", "Неуспешни плащания", "Статуси на поръчки", "Поръчки - само CRM процес"],
+    items: ["Поръчки", "Бекофис", "Клиенти / потребители", "Потребители", "Колички / Изоставени колички", "Товарителници", "Еконт товарителници", "Рекламации", "Гаранционни карти", "Изпратени имейли", "Абониране цена", "Плащания / доставки", "Неуспешни плащания", "Статуси на поръчки", "Поръчки - само CRM процес"],
   },
   {
     title: "Запитвания",
@@ -565,8 +565,6 @@ const moduleItemLabelAliases = {
   "Хедър (лога)": "Хедър / лога",
   "SEO настройки": "SEO",
   "Абониране Цена": "Абониране цена",
-  "Товарителници": "Товарителници / Еконт товарителници",
-  "Еконт товарителници": "Товарителници / Еконт товарителници",
   "Изоставени колички": "Колички / Изоставени колички",
   "Клиенти": "Клиенти / потребители",
   "Оферти": "Оферти като landing страници",
@@ -2361,6 +2359,31 @@ function dedupeModuleGroups() {
   });
 }
 
+function splitLegacyCombinedModules() {
+  moduleGroups.forEach((group) => {
+    const combinedIndex = group.items.indexOf("Товарителници / Еконт товарителници");
+    if (combinedIndex < 0) return;
+    group.items.splice(combinedIndex, 1, "Товарителници", "Еконт товарителници");
+    group.items = [...new Set(group.items)];
+  });
+
+  const legacyAssignmentKey = makeAssignmentKey("Магазин", "Товарителници / Еконт товарителници");
+  if (cmsState.assignments[legacyAssignmentKey]) {
+    const siteIds = cmsState.assignments[legacyAssignmentKey];
+    cmsState.assignments[makeAssignmentKey("Магазин", "Товарителници")] = [...siteIds];
+    cmsState.assignments[makeAssignmentKey("Магазин", "Еконт товарителници")] = [...siteIds];
+    delete cmsState.assignments[legacyAssignmentKey];
+  }
+
+  cmsState.deletedModules = (cmsState.deletedModules || []).flatMap((entry) => {
+    if (entry !== makeModuleKey("Магазин", "Товарителници / Еконт товарителници")) return [entry];
+    return [
+      makeModuleKey("Магазин", "Товарителници"),
+      makeModuleKey("Магазин", "Еконт товарителници"),
+    ];
+  });
+}
+
 function applyModuleStructureFromState() {
   applyDeletedModulesToSites();
 
@@ -2370,6 +2393,7 @@ function applyModuleStructureFromState() {
     applyCustomModules();
   }
 
+  splitLegacyCombinedModules();
   const before = JSON.stringify(moduleGroups);
   dedupeModuleGroups();
   syncSiteModulesToModuleGroups();
