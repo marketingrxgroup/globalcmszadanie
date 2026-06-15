@@ -31,7 +31,7 @@ const sites = [
       {
         title: "Съдържание",
         type: "common",
-        children: [suggested("Страници"), suggested("Новини / Блог"), suggested("Landing страници"), suggested("Homepage"), suggested("Хедър / лога"), suggested("Футър"), suggested("Менюта"), suggested("Медия / файлове")],
+        children: [suggested("Страници"), suggested("Новини / Блог"), suggested("Landing страници"), suggested("Homepage"), suggested("Медия / файлове")],
       },
       {
         title: "Маркетинг",
@@ -46,7 +46,7 @@ const sites = [
       {
         title: "Настройки",
         type: "common",
-        children: [suggested("Сайтове"), suggested("Езици"), suggested("Текстове / Преводи"), suggested("Потребители"), suggested("Роли / Права"), suggested("Интеграции"), suggested("Логове"), suggested("История на промени")],
+        children: [suggested("Сайтове"), suggested("Брандинг / лога"), suggested("Хедър"), suggested("Футър"), suggested("Менюта"), suggested("Езици"), suggested("Текстове / Преводи"), suggested("Потребители"), suggested("Роли / Права"), suggested("Интеграции"), suggested("Логове"), suggested("История на промени")],
       },
     ],
     fields: [
@@ -581,7 +581,7 @@ const moduleGroups = [
   {
     title: "Съдържание",
     type: "common",
-    items: ["Страници", "Статични стр", "Новини", "Блог / Новини", "Категории блог", "Homepage", "Каталог страница", "Хедър / лога", "Футър", "Менюта", "Медия / файлове", "Отзиви", "Галерия"],
+    items: ["Страници", "Статични стр", "Новини", "Блог / Новини", "Категории блог", "Homepage", "Каталог страница", "Медия / файлове", "Отзиви", "Галерия"],
   },
   {
     title: "Landing страници",
@@ -601,20 +601,28 @@ const moduleGroups = [
   {
     title: "Настройки",
     type: "common",
-    items: ["Езици", "Текстове", "Преводи", "Контакти", "Имейл шаблони", "Права и роли", "Потребители", "История на промени", "Логове"],
+    items: ["Брандинг / лога", "Хедър", "Футър", "Менюта", "Езици", "Текстове", "Преводи", "Контакти", "Имейл шаблони", "Права и роли", "Потребители", "История на промени", "Логове"],
   },
 ];
 
 const canonicalGroupAliases = {
   "Rental / Наем": "Rental",
-  "Настройки сайт": "Съдържание",
+  "Настройки сайт": "Настройки",
   "Настройки админ": "Настройки",
-  "Настройки на сайта": "Съдържание",
+  "Настройки на сайта": "Настройки",
   "Системни": "Настройки",
   "Продажби": "Запитвания",
 };
 
 const moduleItemGroupOverrides = {
+  "Настройки сайт||Homepage": "Съдържание",
+  "Настройки сайт||Каталог страница": "Съдържание",
+  "Настройки сайт||Страници": "Съдържание",
+  "Настройки сайт||Новини": "Съдържание",
+  "Настройки на сайта||Homepage": "Съдържание",
+  "Настройки на сайта||Каталог страница": "Съдържание",
+  "Настройки на сайта||Страници": "Съдържание",
+  "Настройки на сайта||Новини": "Съдържание",
   "Настройки сайт||Оферти": "Landing страници",
   "Продажби||Landing страници / продуктови фунии": "Landing страници",
   "Продажби||Сравнение на цени": "Каталог",
@@ -637,12 +645,18 @@ const moduleItemGroupOverrides = {
   "Съдържание||Ладинг стр": "Landing страници",
   "Съдържание||Ландинг страници": "Landing страници",
   "Съдържание||Услуги": "Услуги / Сервиз",
+  "Съдържание||Хедър": "Настройки",
+  "Съдържание||Хедър / лога": "Настройки",
+  "Съдържание||Футър": "Настройки",
+  "Съдържание||Менюта": "Настройки",
 };
 
 const moduleItemLabelAliases = {
   "Начална страница": "Homepage",
-  "Хедър": "Хедър / лога",
-  "Хедър (лога)": "Хедър / лога",
+  "Хедър / лога": "Брандинг / лога",
+  "Хедър (лога)": "Брандинг / лога",
+  "Лога": "Брандинг / лога",
+  "Лого": "Брандинг / лога",
   "SEO настройки": "SEO",
   "Абониране Цена": "Абониране цена",
   "Изоставени колички": "Колички / Изоставени колички",
@@ -2675,6 +2689,15 @@ function buildReadableModuleDetail(groupTitle, itemLabel, isGlobalCms = false) {
     );
   }
 
+  if (group.includes("настрой") && (label.includes("брандинг") || label.includes("лого") || label.includes("хедър") || label.includes("футър") || label.includes("меню"))) {
+    return makeModuleDetail(
+      `Модул за управление на визуалната и навигационна структура на сайта ${scope}.`,
+      ["Лого и бранд елементи", "Хедър настройки", "Футър настройки", "Навигационни менюта", "Линкове, контакти и позициониране"],
+      ["Лого", "Цвят/брандинг", "Меню", "Линк", "Позиция", "Контакт", "Статус"],
+      "Това са настройки на сайта, защото влияят на общата структура и визия, а не на конкретна редакционна страница."
+    );
+  }
+
   if (label.includes("страниц") || label.includes("homepage") || label.includes("хедър") || label.includes("футър") || label.includes("меню") || label.includes("медия") || label.includes("файлов")) {
     return makeModuleDetail(
       `Модул за управление на съдържание и структурни части на сайта ${scope}.`,
@@ -2942,6 +2965,32 @@ function addModuleItem(groupTitle, itemLabel) {
   }
 }
 
+function normalizeModuleGroupsByAliases() {
+  const moves = [];
+
+  moduleGroups.forEach((group) => {
+    const keptItems = [];
+
+    group.items.forEach((itemLabel) => {
+      const canonicalGroupTitle = resolveCanonicalGroup(group.title, itemLabel);
+      const normalizedLabel = normalizeModuleItemLabel(itemLabel, group.title);
+
+      if (canonicalGroupTitle !== group.title || normalizedLabel !== itemLabel) {
+        moves.push({ groupTitle: canonicalGroupTitle, itemLabel: normalizedLabel });
+        return;
+      }
+
+      if (!keptItems.includes(itemLabel)) {
+        keptItems.push(itemLabel);
+      }
+    });
+
+    group.items = keptItems;
+  });
+
+  moves.forEach(({ groupTitle, itemLabel }) => addModuleItem(groupTitle, itemLabel));
+}
+
 function dedupeModuleGroups() {
   const groupsToRemove = [];
 
@@ -3002,8 +3051,10 @@ function applyModuleStructureFromState() {
 
   splitLegacyCombinedModules();
   const before = JSON.stringify(moduleGroups);
+  normalizeModuleGroupsByAliases();
   dedupeModuleGroups();
   syncSiteModulesToModuleGroups();
+  normalizeModuleGroupsByAliases();
   migrateAssignmentKeysOnLoad();
   const changed = before !== JSON.stringify(moduleGroups);
   if (changed) {
