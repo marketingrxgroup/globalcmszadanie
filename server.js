@@ -7,6 +7,7 @@ const stateFile = path.join(root, "cms-state.json");
 const port = Number(process.env.PORT || 8787);
 const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL || "https://n8n.milaski.xyz/webhook/cms-events";
 const n8nWebhookSecret = process.env.N8N_WEBHOOK_SECRET || "";
+const maxRequestBodySize = 12_000_000;
 
 const defaultState = {
   assignments: {},
@@ -424,7 +425,7 @@ function readBody(req) {
     let body = "";
     req.on("data", (chunk) => {
       body += chunk;
-      if (body.length > 2_000_000) {
+      if (body.length > maxRequestBodySize) {
         req.destroy();
         reject(new Error("Body too large"));
       }

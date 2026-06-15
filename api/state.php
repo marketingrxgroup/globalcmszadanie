@@ -5,6 +5,7 @@ $stateFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'cms-state.json';
 $webhookLogFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'cms-webhook.log';
 $n8nWebhookUrl = getenv('N8N_WEBHOOK_URL') ?: 'https://n8n.milaski.xyz/webhook/cms-events';
 $n8nWebhookSecret = getenv('N8N_WEBHOOK_SECRET') ?: '';
+$maxRequestBodySize = 12000000;
 $siteNames = [
     'rentex' => 'Rentex.bg',
     'bauportal' => 'Bauportal.bg',
@@ -551,7 +552,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $previousState = read_previous_state($stateFile);
     $raw = file_get_contents('php://input');
-    if ($raw === false || strlen($raw) > 2000000) {
+    if ($raw === false || strlen($raw) > $maxRequestBodySize) {
         send_json(400, ['ok' => false, 'error' => 'Invalid request body']);
     }
 

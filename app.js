@@ -737,6 +737,10 @@ const defaultModuleLayout = cloneModuleLayout(moduleGroups);
 const EDITOR_NAME_STORAGE_KEY = "cms_editor_name";
 const EDITOR_NAME_COOKIE = "cms_editor_name";
 const EDITOR_NAME_COOKIE_DAYS = 365;
+const DETAIL_ATTACHMENT_MAX_FILES = 12;
+const DETAIL_ATTACHMENT_MAX_SOURCE_SIZE = 10 * 1024 * 1024;
+const DETAIL_ATTACHMENT_IMAGE_MAX_DIMENSION = 1600;
+const DETAIL_ATTACHMENT_JPEG_QUALITY = 0.82;
 
 function readEditorNameCookie() {
   const match = document.cookie.match(new RegExp(`(?:^|; )${EDITOR_NAME_COOKIE}=([^;]*)`));
@@ -1156,6 +1160,110 @@ function escapeHtml(value = "") {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
+function getDetailAttachments(detail = {}) {
+  return Array.isArray(detail.attachments) ? detail.attachments : [];
+}
+
+function formatFileSize(size = 0) {
+  if (!size) return "";
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function renderDetailAttachments(attachments = []) {
+  if (!attachments.length) {
+    return `<p class="attachment-empty">Няма прикачени снимки.</p>`;
+  }
+
+  return `
+    <div class="attachment-grid">
+      ${attachments
+        .map((attachment, index) => {
+          return `
+            <figure class="attachment-card">
+              <button class="attachment-remove" data-attachment-index="${index}" type="button" title="Премахни снимката">×</button>
+              <a href="${escapeAttr(attachment.dataUrl || "")}" target="_blank" rel="noopener">
+                <img src="${escapeAttr(attachment.dataUrl || "")}" alt="${escapeAttr(attachment.name || "Прикачена снимка")}" loading="lazy">
+              </a>
+              <figcaption>
+                <strong>${escapeHtml(attachment.name || "Снимка")}</strong>
+                <span>${escapeHtml(formatFileSize(attachment.size))}</span>
+              </figcaption>
+            </figure>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderDetailAttachmentBlock(detail) {
+  return `
+    <div class="detail-block attachment-block">
+      <h4>Прикачени снимки</h4>
+      <label class="attachment-upload" for="siteDetailAttachments">
+        <input id="siteDetailAttachments" type="file" accept="image/*" multiple>
+        <span>Прикачи снимки</span>
+      </label>
+      <p class="attachment-hint">Снимките се записват към това меню и се виждат като thumbnails. Най-добре качвай screenshots до ${DETAIL_ATTACHMENT_MAX_SOURCE_SIZE / (1024 * 1024)} MB.</p>
+      <div id="siteDetailAttachmentList">
+        ${renderDetailAttachments(getDetailAttachments(detail))}
+      </div>
+    </div>
+  `;
+}
+
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const url = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Не мога да прочета снимката."));
+    };
+
+    image.src = url;
+  });
+}
+
+async function fileToDetailAttachment(file) {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Може да се прикачват само снимки.");
+  }
+
+  if (file.size > DETAIL_ATTACHMENT_MAX_SOURCE_SIZE) {
+    throw new Error(`Снимката "${file.name}" е над ${DETAIL_ATTACHMENT_MAX_SOURCE_SIZE / (1024 * 1024)} MB.`);
+  }
+
+  const image = await loadImageFromFile(file);
+  const scale = Math.min(1, DETAIL_ATTACHMENT_IMAGE_MAX_DIMENSION / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  context.drawImage(image, 0, 0, width, height);
+  const dataUrl = canvas.toDataURL("image/jpeg", DETAIL_ATTACHMENT_JPEG_QUALITY);
+
+  return {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    name: file.name,
+    type: "image/jpeg",
+    size: Math.round((dataUrl.length * 3) / 4),
+    width,
+    height,
+    uploadedAt: new Date().toISOString(),
+    dataUrl,
+  };
+}
+
 function renderModuleDetail(site, groupTitle = "Модул", itemLabel = "Избери екран", status = "current") {
   const detail = getModuleDetail(site, groupTitle, itemLabel);
   const statusLabel = status === "suggested" ? "Предложение / важно" : "Има го в момента";
@@ -1182,6 +1290,8 @@ function renderModuleDetail(site, groupTitle = "Модул", itemLabel = "Изб
       <textarea id="siteDetailNote" rows="1">${escapeHtml(detail.note || "")}</textarea>
     </div>
 
+    ${renderDetailAttachmentBlock(detail)}
+
     <div class="editor-actions">
       <button class="primary-button site-detail-save" type="button">Запази описанието</button>
       <span class="save-status" id="siteDetailStatus"></span>
@@ -1193,16 +1303,31 @@ function bindSiteDetailSave(profile, site, groupTitle, itemLabel) {
   const button = profile.querySelector(".site-detail-save");
   if (!button) return;
 
+  const stateKey = makeStateKey(site.id, groupTitle, itemLabel);
+
+  const currentAttachments = () => {
+    const saved = cmsState.details[stateKey];
+    if (saved) return getDetailAttachments(saved);
+    return getDetailAttachments(getModuleDetail(site, groupTitle, itemLabel));
+  };
+
+  const readDetailForm = (attachments = currentAttachments()) => ({
+    summary: profile.querySelector("#siteDetailSummary").value.trim(),
+    includes: linesFromValue(profile.querySelector("#siteDetailIncludes").value),
+    fields: linesFromValue(profile.querySelector("#siteDetailFields").value),
+    note: profile.querySelector("#siteDetailNote").value.trim(),
+    attachments,
+  });
+
+  const renderAttachmentList = (attachments = currentAttachments()) => {
+    const list = profile.querySelector("#siteDetailAttachmentList");
+    if (list) list.innerHTML = renderDetailAttachments(attachments);
+  };
+
   const saveSiteDetail = async (reason = "button") => {
-    const stateKey = makeStateKey(site.id, groupTitle, itemLabel);
     const hadSavedDetail = Boolean(cmsState.details[stateKey]);
     const previousDetail = getModuleDetail(site, groupTitle, itemLabel);
-    const nextDetail = {
-      summary: profile.querySelector("#siteDetailSummary").value.trim(),
-      includes: linesFromValue(profile.querySelector("#siteDetailIncludes").value),
-      fields: linesFromValue(profile.querySelector("#siteDetailFields").value),
-      note: profile.querySelector("#siteDetailNote").value.trim(),
-    };
+    const nextDetail = readDetailForm();
     cmsState.details[stateKey] = nextDetail;
 
     const saved = await saveCmsState(cmsEvent(hadSavedDetail ? "detail.updated" : "detail.created", reason === "autosave" ? "Автоматично обновено описание" : hadSavedDetail ? "Обновено е описание" : "Добавено е описание", {
@@ -1228,6 +1353,79 @@ function bindSiteDetailSave(profile, site, groupTitle, itemLabel) {
       window.clearTimeout(autosaveTimers.get(timerKey));
       autosaveTimers.set(timerKey, window.setTimeout(() => saveSiteDetail("autosave"), 1200));
     });
+  });
+
+  profile.querySelector("#siteDetailAttachments")?.addEventListener("change", async (event) => {
+    const input = event.currentTarget;
+    const status = profile.querySelector("#siteDetailStatus");
+    const files = [...(input.files || [])];
+    if (!files.length) return;
+
+    if (status) status.textContent = "Качване...";
+
+    try {
+      const attachments = [...currentAttachments()];
+      for (const file of files) {
+        if (attachments.length >= DETAIL_ATTACHMENT_MAX_FILES) {
+          throw new Error(`Може да има максимум ${DETAIL_ATTACHMENT_MAX_FILES} снимки към едно меню.`);
+        }
+        attachments.push(await fileToDetailAttachment(file));
+      }
+
+      const previousDetail = getModuleDetail(site, groupTitle, itemLabel);
+      const nextDetail = readDetailForm(attachments);
+      nextDetail.attachmentNames = attachments.map((attachment) => attachment.name);
+      cmsState.details[stateKey] = nextDetail;
+      renderAttachmentList(attachments);
+      const saved = await saveCmsState(cmsEvent("detail.attachments.updated", "Прикачени са снимки към описание", {
+        siteId: site.id,
+        moduleGroup: groupTitle,
+        moduleName: itemLabel,
+        description: `${site.name}: добавени са снимки към "${itemLabel}" (${groupTitle}).`,
+        changeText: buildFieldChangeText(
+          { attachmentNames: getDetailAttachments(previousDetail).map((attachment) => attachment.name) },
+          { attachmentNames: attachments.map((attachment) => attachment.name) },
+          [{ key: "attachmentNames", label: "Прикачени снимки" }]
+        ),
+      }));
+      if (status) status.textContent = saved ? "Записано" : "Не е записано";
+    } catch (error) {
+      if (status) status.textContent = error.message;
+      status?.classList.add("error");
+      window.setTimeout(() => status?.classList.remove("error"), 2600);
+    } finally {
+      input.value = "";
+    }
+  });
+
+  profile.querySelector("#siteDetailAttachmentList")?.addEventListener("click", async (event) => {
+    const removeButton = event.target.closest(".attachment-remove");
+    if (!removeButton) return;
+
+    const index = Number(removeButton.dataset.attachmentIndex);
+    const attachments = [...currentAttachments()];
+    if (!Number.isInteger(index) || index < 0 || index >= attachments.length) return;
+
+    const previousNames = attachments.map((attachment) => attachment.name);
+    attachments.splice(index, 1);
+    const nextDetail = readDetailForm(attachments);
+    nextDetail.attachmentNames = attachments.map((attachment) => attachment.name);
+    cmsState.details[stateKey] = nextDetail;
+    renderAttachmentList(attachments);
+
+    const saved = await saveCmsState(cmsEvent("detail.attachments.updated", "Премахната е снимка от описание", {
+      siteId: site.id,
+      moduleGroup: groupTitle,
+      moduleName: itemLabel,
+      description: `${site.name}: премахната е снимка от "${itemLabel}" (${groupTitle}).`,
+      changeText: buildFieldChangeText(
+        { attachmentNames: previousNames },
+        { attachmentNames: attachments.map((attachment) => attachment.name) },
+        [{ key: "attachmentNames", label: "Прикачени снимки" }]
+      ),
+    }));
+    const status = profile.querySelector("#siteDetailStatus");
+    if (status) status.textContent = saved ? "Записано" : "Не е записано";
   });
 }
 
@@ -4205,12 +4403,12 @@ function exportSitesExcel() {
 function buildExcelXml() {
   const worksheets = sites.map((site) => {
     const rows = [
-      `<Row ss:Height="28">${excelCell(`Сайт: ${site.name}`, "Title", 7)}</Row>`,
-      `<Row ss:Height="22">${["Група", "Модул", "Текущо/предложение", "Готово", "Кратко описание", "Какво включва", "Полета / данни", "Бележка"].map((cell) => excelCell(cell, "Header")).join("")}</Row>`,
+      `<Row ss:Height="28">${excelCell(`Сайт: ${site.name}`, "Title", 8)}</Row>`,
+      `<Row ss:Height="22">${["Група", "Модул", "Текущо/предложение", "Готово", "Кратко описание", "Какво включва", "Полета / данни", "Бележка", "Прикачени снимки"].map((cell) => excelCell(cell, "Header")).join("")}</Row>`,
     ];
 
     site.menuTree.forEach((group) => {
-      rows.push(`<Row ss:Height="22">${excelCell(group.title.toUpperCase(), groupStyle(group.type), 7)}</Row>`);
+      rows.push(`<Row ss:Height="22">${excelCell(group.title.toUpperCase(), groupStyle(group.type), 8)}</Row>`);
 
       group.children.forEach((child) => {
         const label = getChildLabel(child);
@@ -4228,6 +4426,7 @@ function buildExcelXml() {
             ${excelCell((detail.includes || []).join("\n"), "Body")}
             ${excelCell((detail.fields || []).join("\n"), "Body")}
             ${excelCell(detail.note || "", "Body")}
+            ${excelCell(getDetailAttachments(detail).map((attachment) => attachment.name).join("\n"), "Body")}
           </Row>`
         );
       });
@@ -4247,6 +4446,7 @@ function buildExcelXml() {
           <Column ss:Width="270"/>
           <Column ss:Width="250"/>
           <Column ss:Width="300"/>
+          <Column ss:Width="220"/>
           ${rows.join("")}
         </Table>
         <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
