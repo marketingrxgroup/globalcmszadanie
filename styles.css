@@ -823,13 +823,6 @@ body.file-mode .file-warning {
   cursor: pointer;
 }
 
-.attachment-hint,
-.attachment-empty {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-}
-
 .attachment-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
@@ -846,10 +839,14 @@ body.file-mode .file-warning {
   background: #fff;
 }
 
-.attachment-card a {
+.attachment-preview {
   display: block;
+  width: 100%;
   aspect-ratio: 4 / 3;
+  border: 0;
+  padding: 0;
   background: var(--surface-soft);
+  cursor: zoom-in;
 }
 
 .attachment-card img {
@@ -902,6 +899,73 @@ body.file-mode .file-warning {
 .attachment-remove:hover {
   color: #fff;
   background: #b91c1c;
+}
+
+.attachment-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(6, 17, 28, 0.82);
+}
+
+.attachment-lightbox[hidden] {
+  display: none;
+}
+
+.attachment-lightbox-dialog {
+  position: relative;
+  display: grid;
+  max-width: min(1100px, 96vw);
+  max-height: 92vh;
+  gap: 10px;
+}
+
+.attachment-lightbox-image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(92vh - 52px);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+  object-fit: contain;
+}
+
+.attachment-lightbox-caption {
+  overflow: hidden;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-lightbox-close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  color: #fff;
+  background: #14304a;
+  cursor: pointer;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.attachment-lightbox-close:hover {
+  background: #071522;
+}
+
+body.lightbox-open {
+  overflow: hidden;
 }
 
 .save-status {

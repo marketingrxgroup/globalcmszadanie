@@ -1172,7 +1172,7 @@ function formatFileSize(size = 0) {
 
 function renderDetailAttachments(attachments = []) {
   if (!attachments.length) {
-    return `<p class="attachment-empty">Няма прикачени снимки.</p>`;
+    return "";
   }
 
   return `
@@ -1182,9 +1182,9 @@ function renderDetailAttachments(attachments = []) {
           return `
             <figure class="attachment-card">
               <button class="attachment-remove" data-attachment-index="${index}" type="button" title="Премахни снимката">×</button>
-              <a href="${escapeAttr(attachment.dataUrl || "")}" target="_blank" rel="noopener">
+              <button class="attachment-preview" data-attachment-index="${index}" type="button" title="Отвори снимката">
                 <img src="${escapeAttr(attachment.dataUrl || "")}" alt="${escapeAttr(attachment.name || "Прикачена снимка")}" loading="lazy">
-              </a>
+              </button>
               <figcaption>
                 <strong>${escapeHtml(attachment.name || "Снимка")}</strong>
                 <span>${escapeHtml(formatFileSize(attachment.size))}</span>
@@ -1205,7 +1205,6 @@ function renderDetailAttachmentBlock(detail) {
         <input id="siteDetailAttachments" type="file" accept="image/*" multiple>
         <span>Прикачи снимки</span>
       </label>
-      <p class="attachment-hint">Снимките се записват към това меню и се виждат като thumbnails. Най-добре качвай screenshots до ${DETAIL_ATTACHMENT_MAX_SOURCE_SIZE / (1024 * 1024)} MB.</p>
       <div id="siteDetailAttachmentList">
         ${renderDetailAttachments(getDetailAttachments(detail))}
       </div>
@@ -1262,6 +1261,55 @@ async function fileToDetailAttachment(file) {
     uploadedAt: new Date().toISOString(),
     dataUrl,
   };
+}
+
+function initAttachmentLightbox() {
+  if (document.querySelector("#attachmentLightbox")) return;
+
+  const lightbox = document.createElement("div");
+  lightbox.id = "attachmentLightbox";
+  lightbox.className = "attachment-lightbox";
+  lightbox.hidden = true;
+  lightbox.innerHTML = `
+    <div class="attachment-lightbox-dialog" role="dialog" aria-modal="true" aria-label="Прикачена снимка">
+      <button class="attachment-lightbox-close" type="button" aria-label="Затвори">×</button>
+      <img class="attachment-lightbox-image" alt="">
+      <div class="attachment-lightbox-caption"></div>
+    </div>
+  `;
+  document.body.appendChild(lightbox);
+
+  lightbox.addEventListener("click", (event) => {
+    if (event.target === lightbox || event.target.closest(".attachment-lightbox-close")) {
+      closeAttachmentLightbox();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !lightbox.hidden) closeAttachmentLightbox();
+  });
+}
+
+function openAttachmentLightbox(attachment) {
+  initAttachmentLightbox();
+  const lightbox = document.querySelector("#attachmentLightbox");
+  const image = lightbox.querySelector(".attachment-lightbox-image");
+  const caption = lightbox.querySelector(".attachment-lightbox-caption");
+
+  image.src = attachment.dataUrl || "";
+  image.alt = attachment.name || "Прикачена снимка";
+  caption.textContent = attachment.name || "";
+  lightbox.hidden = false;
+  document.body.classList.add("lightbox-open");
+}
+
+function closeAttachmentLightbox() {
+  const lightbox = document.querySelector("#attachmentLightbox");
+  if (!lightbox) return;
+
+  lightbox.hidden = true;
+  lightbox.querySelector(".attachment-lightbox-image").src = "";
+  document.body.classList.remove("lightbox-open");
 }
 
 function renderModuleDetail(site, groupTitle = "Модул", itemLabel = "Избери екран", status = "current") {
@@ -1400,6 +1448,13 @@ function bindSiteDetailSave(profile, site, groupTitle, itemLabel) {
 
   profile.querySelector("#siteDetailAttachmentList")?.addEventListener("click", async (event) => {
     const removeButton = event.target.closest(".attachment-remove");
+    const previewButton = event.target.closest(".attachment-preview");
+    if (previewButton) {
+      const attachment = currentAttachments()[Number(previewButton.dataset.attachmentIndex)];
+      if (attachment) openAttachmentLightbox(attachment);
+      return;
+    }
+
     if (!removeButton) return;
 
     const index = Number(removeButton.dataset.attachmentIndex);
@@ -4377,6 +4432,7 @@ document.querySelector("#exportExcelBtn").addEventListener("click", exportSitesE
 
 async function initApp() {
   initEditorName();
+  initAttachmentLightbox();
   await loadCmsState();
   applySavedAssignments();
   syncModuleOrderToSites();
