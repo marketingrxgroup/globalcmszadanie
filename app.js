@@ -1,7 +1,7 @@
 const sites = [
   {
     id: "global-cms",
-    name: "GLOBAL CMS",
+    name: "GLOBAL CMS MENU",
     type: "Единно CMS меню / препоръчано решение",
     platform: "Laravel Filament / Global CMS",
     database: "Multi-site: отделна връзка/конфигурация по сайт",
