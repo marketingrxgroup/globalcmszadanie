@@ -2,6 +2,8 @@ const sites = [
   {
     id: "global-cms",
     name: "GLOBAL CMS MENU",
+    profileTitle: "Единно CMS меню",
+    profileNote: "Предложение",
     type: "Единно CMS меню / препоръчано решение",
     platform: "Laravel Filament / Global CMS",
     database: "Multi-site: отделна връзка/конфигурация по сайт",
@@ -960,12 +962,14 @@ function renderSiteProfile(siteId) {
   });
 
   const siteMeta = getSiteMeta(site);
+  const profileTitle = site.profileTitle || site.name;
+  const profileNote = site.profileNote || "Текущо CRM меню + предложения";
 
   profile.innerHTML = `
     <div class="profile-workspace">
       <div class="panel">
-        <h3>${site.name}</h3>
-        <p class="panel-note">Текущо CRM меню + предложения</p>
+        <h3>${profileTitle}</h3>
+        <p class="panel-note">${profileNote}</p>
         <div class="tree-legend">
           <span class="legend-current">Има го в момента</span>
           <span class="legend-suggested">Предложение / важно</span>
